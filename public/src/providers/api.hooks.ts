@@ -4,6 +4,6 @@ export interface APIDetails {
 	version: string;
 }
 
-export const APIContext = createContext<APIDetails | undefined>(undefined);
+export const APIDetailsContext = createContext<APIDetails | undefined>(undefined);
 
-export const useAPIContext = () => useContext(APIContext);
+export const useAPIDetails = () => useContext(APIDetailsContext);

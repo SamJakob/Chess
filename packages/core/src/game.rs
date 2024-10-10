@@ -1,7 +1,11 @@
+use crate::error::PieceNotFoundError;
+use crate::moves::Position;
+use chrono::serde::ts_milliseconds;
+use chrono::{DateTime, Utc};
 use serde::ser::SerializeSeq;
 use serde::{Serialize, Serializer};
 use std::fmt::{Display, Formatter, Write};
-use std::sync::Arc;
+use std::time::Instant;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum PieceKind {
@@ -148,19 +152,25 @@ where
     S: Serializer,
 {
     let mut ranks = serializer.serialize_seq(Some(8))?;
-    for idx in 0..8 {
-        ranks.serialize_element(&board[idx])?;
+    for rank in board {
+        ranks.serialize_element(&rank)?;
     }
     ranks.end()
 }
 
 #[derive(Serialize)]
 pub struct Game {
+    /// ID of the game in the [crate::game_manager::GameManager] (if the game belongs to a
+    /// GameManager]).
     id: Option<String>,
 
     /// 8x8 grid of pieces. Rank (1-8) then file (A-H).
     #[serde(serialize_with = "serialize_game_board")]
-    board: Arc<GameBoard>,
+    board: GameBoard,
+
+    /// The [Instant] the game was created.
+    #[serde(with = "ts_milliseconds")]
+    created_at: DateTime<Utc>,
 }
 
 impl Default for Game {
@@ -188,7 +198,8 @@ impl Game {
 
         Game {
             id,
-            board: Arc::new(board),
+            board,
+            created_at: Utc::now(),
         }
     }
 
@@ -198,6 +209,21 @@ impl Game {
         } else {
             Color::Black
         }
+    }
+
+    pub fn get_piece_by_position(&self, position: Position) -> Option<Piece> {
+        self.board[position.rank][position.file]
+    }
+
+    pub fn move_piece_at_position(&mut self, position: Position, new_position: Position) -> Result<(), PieceNotFoundError> {
+        let piece = self.get_piece_by_position(position.clone());
+        if piece.is_none() {
+            return Err(PieceNotFoundError);
+        }
+
+        self.board[position.rank][position.file] = None;
+        self.board[new_position.rank][new_position.file] = piece;
+        Ok(())
     }
 }
 

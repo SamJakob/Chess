@@ -10,6 +10,7 @@ export interface Piece {
 export interface Game {
 	id: string;
 	board: (Piece | undefined)[][];
+	created_at: number;
 }
 
 export async function createGame() {

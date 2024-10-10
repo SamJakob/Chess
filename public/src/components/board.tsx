@@ -10,27 +10,27 @@ export function ChessBoard() {
 	const game = requireAsync(useGame());
 
 	const fileInfoColumn = (
-		<tr className="file-info">
-			<td />
+		<div className="file-info">
+			<div />
 			{Array(game.board[0].length)
 				.fill(undefined)
 				.map((_, i) => (
-					<td key={i}>{FILES[i]}</td>
+					<div key={i}>{FILES[i]}</div>
 				))}
-			<td />
-		</tr>
+			<div />
+		</div>
 	);
 
 	return (
 		<div className="h-full flex flex-col justify-center items-center">
-			<table className="chess-board">
-				<tbody>
+			<div className="chess-board">
+				<div>
 					{fileInfoColumn}
 					{game.board.map((files, rank) => (
-						<tr key={rank}>
-							<td className="rank-info">{RANKS[rank]}</td>
+						<div className="row" key={rank}>
+							<div className="rank-info">{RANKS[rank]}</div>
 							{files.map((piece, file) => (
-								<td
+								<div
 									key={file}
 									className="square"
 									data-file={file}
@@ -41,16 +41,16 @@ export function ChessBoard() {
 									{piece ? (
 										<ChessPiece kind={piece.kind} color={piece.color} position={[rank, file]} />
 									) : (
-										<></>
+										<span className="chess-piece-placeholder"></span>
 									)}
-								</td>
+								</div>
 							))}
-							<td className="rank-info">{RANKS[rank]}</td>
-						</tr>
+							<div className="rank-info">{RANKS[rank]}</div>
+						</div>
 					))}
 					{fileInfoColumn}
-				</tbody>
-			</table>
+				</div>
+			</div>
 		</div>
 	);
 }

@@ -1,5 +1,6 @@
 import axios from 'axios';
+import { APIDetails } from '../providers/api.hooks.ts';
 
-export async function getAPIVersion() {
-	return (await axios.get<string>('/version')).data;
+export async function getAPIDetails() {
+	return (await axios.get<APIDetails>('/details')).data;
 }

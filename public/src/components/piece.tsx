@@ -105,8 +105,25 @@ export function ChessPiece({ kind, color, position }: Readonly<ChessPieceProps>)
 				action: 'endDrag',
 			});
 
+			const hoveredSquare = document.querySelector('.square.hovered');
+
+			let rank;
+			let file;
+
+			if (hoveredSquare) {
+				hoveredSquare.classList.remove('hovered');
+
+				const rawRank = hoveredSquare.getAttribute('data-rank');
+				const rawFile = hoveredSquare.getAttribute('data-file');
+
+				if (rawRank) rank = parseInt(rawRank);
+				if (rawFile) file = parseInt(rawFile);
+			}
+
 			(async () => {
-				await move(game, position, [3, 3]);
+				if (rank !== undefined && file !== undefined) {
+					await move(game, position, [rank, file]);
+				}
 
 				await refreshGame();
 				dispatchActionState({
@@ -124,6 +141,22 @@ export function ChessPiece({ kind, color, position }: Readonly<ChessPieceProps>)
 	const continueDrag = useCallback(
 		(e: MouseEvent) => {
 			if (!isDragging) return;
+
+			// Get the square that the mouse is currently over.
+			const squares = document.querySelectorAll('.square');
+			squares.forEach((square) => {
+				const boundingBox = square.getBoundingClientRect();
+				if (
+					boundingBox.left <= e.clientX &&
+					boundingBox.right >= e.clientX &&
+					boundingBox.top <= e.clientY &&
+					boundingBox.bottom >= e.clientY
+				) {
+					square.classList.add('hovered');
+				} else {
+					square.classList.remove('hovered');
+				}
+			});
 
 			setLocation((location) => [
 				e.clientX - offset![0] + location![0], //

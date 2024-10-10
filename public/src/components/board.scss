@@ -8,41 +8,53 @@ $size: var(--chess-grid-size);
 $light: var(--chess-grid-light);
 $dark: var(--chess-grid-dark);
 
-table.chess-board {
-  display: inline-block;
+.chess-board {
   cursor: default !important;
   user-select: none !important;
 
-  td {
-    border: 1px solid lightgray;
-    width: $size;
-    height: $size;
-    text-align: center;
+  display: flex;
+  flex-direction: column;
+
+  .row, div.file-info {
+    display: flex;
+    flex-direction: row;
   }
 
-  tr:not(.file-info) {
+  .row:not(.file-info) {
     &:nth-child(even) {
-      td:nth-child(odd):not(.rank-info) {
+      div:nth-child(odd):not(.rank-info) {
         background-color: $dark;
       }
 
-      td:nth-child(even):not(.rank-info) {
+      div:nth-child(even):not(.rank-info) {
         background-color: $light;
       }
     }
 
     &:nth-child(odd) {
-      td:nth-child(odd):not(.rank-info) {
+      div:nth-child(odd):not(.rank-info) {
         background-color: $light;
       }
 
-      td:nth-child(even):not(.rank-info) {
+      div:nth-child(even):not(.rank-info) {
         background-color: $dark;
       }
     }
   }
 
-  .square {
+  div.square, div.rank-info, div.file-info div {
+    border: 1px solid lightgray;
+    text-align: center;
+    height: $size;
+    width: $size;
+
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+  }
+
+  div.square {
     position: relative;
 
     &::before {
@@ -60,5 +72,15 @@ table.chess-board {
     .chess-piece {
       position: relative;
     }
+
+    &.hovered {
+      border-color: black;
+    }
+  }
+
+  .chess-piece-placeholder {
+    display: inline-block;
+    height: $size;
+    width: $size;
   }
 }
