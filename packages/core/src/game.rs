@@ -1,3 +1,5 @@
+use serde::ser::SerializeSeq;
+use serde::{Serialize, Serializer};
 use std::fmt::{Display, Formatter, Write};
 use std::sync::Arc;
 
@@ -47,6 +49,15 @@ impl PieceKind {
     }
 }
 
+impl Serialize for PieceKind {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_char(self.char())
+    }
+}
+
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Color {
     Black,
@@ -70,7 +81,16 @@ impl Color {
     }
 }
 
-#[derive(Copy, Clone, Debug)]
+impl Serialize for Color {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_char(self.char())
+    }
+}
+
+#[derive(Copy, Clone, Debug, Serialize)]
 pub struct Piece {
     /// The kind of piece. This also indicates its value.
     kind: PieceKind,
@@ -123,13 +143,38 @@ macro_rules! p {
 
 pub type GameBoard = [[Option<Piece>; 8]; 8];
 
+fn serialize_game_board<S>(board: &GameBoard, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    let mut ranks = serializer.serialize_seq(Some(8))?;
+    for idx in 0..8 {
+        ranks.serialize_element(&board[idx])?;
+    }
+    ranks.end()
+}
+
+#[derive(Serialize)]
 pub struct Game {
+    id: Option<String>,
+
     /// 8x8 grid of pieces. Rank (1-8) then file (A-H).
+    #[serde(serialize_with = "serialize_game_board")]
     board: Arc<GameBoard>,
+}
+
+impl Default for Game {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Game {
     pub fn new() -> Game {
+        Game::new_with_id(None)
+    }
+
+    pub fn new_with_id(id: Option<String>) -> Game {
         let board: GameBoard = [
             [p!("BR"), p!("BN"), p!("BB"), p!("BQ"), p!("BK"), p!("BB"), p!("BN"), p!("BR")],
             [p!("BP"), p!("BP"), p!("BP"), p!("BP"), p!("BP"), p!("BP"), p!("BP"), p!("BP")],
@@ -142,6 +187,7 @@ impl Game {
         ];
 
         Game {
+            id,
             board: Arc::new(board),
         }
     }

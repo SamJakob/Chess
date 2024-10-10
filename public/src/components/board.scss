@@ -1,0 +1,64 @@
+:root {
+  --chess-grid-size: 64px;
+  --chess-grid-light: lightgray;
+  --chess-grid-dark: darkgray;
+}
+
+$size: var(--chess-grid-size);
+$light: var(--chess-grid-light);
+$dark: var(--chess-grid-dark);
+
+table.chess-board {
+  display: inline-block;
+  cursor: default !important;
+  user-select: none !important;
+
+  td {
+    border: 1px solid lightgray;
+    width: $size;
+    height: $size;
+    text-align: center;
+  }
+
+  tr:not(.file-info) {
+    &:nth-child(even) {
+      td:nth-child(odd):not(.rank-info) {
+        background-color: $dark;
+      }
+
+      td:nth-child(even):not(.rank-info) {
+        background-color: $light;
+      }
+    }
+
+    &:nth-child(odd) {
+      td:nth-child(odd):not(.rank-info) {
+        background-color: $light;
+      }
+
+      td:nth-child(even):not(.rank-info) {
+        background-color: $dark;
+      }
+    }
+  }
+
+  .square {
+    position: relative;
+
+    &::before {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      content: attr(data-square-name);
+      z-index: 0;
+      font-size: 32px;
+      color: black;
+      opacity: 0.1;
+    }
+
+    .chess-piece {
+      position: relative;
+    }
+  }
+}

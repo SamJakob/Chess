@@ -1,0 +1,37 @@
+.chess-piece-wrapper {
+  position: relative;
+  top: 0;
+  left: 0;
+
+  .chess-piece {
+    height: var(--chess-grid-size);
+    width: var(--chess-grid-size);
+    padding: 8px;
+
+    cursor: not-allowed;
+  }
+
+  &:not(.is-loading) {
+    .chess-piece {
+      &:hover {
+        cursor: grab;
+        transform: scale(1.1);
+      }
+
+      &:active {
+        cursor: grabbing;
+      }
+    }
+  }
+
+  &.is-loading {
+    .chess-piece {
+      opacity: 0.6;
+      cursor: wait;
+    }
+  }
+
+  &.is-dragging, &.is-dragging .chess-piece {
+    z-index: 9999;
+  }
+}
