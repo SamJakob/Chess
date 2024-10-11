@@ -14,16 +14,29 @@ use crate::game::{Color, GameBoard, Piece, PieceKind};
 use serde::de::{SeqAccess, Visitor};
 use serde::{de, Deserialize, Deserializer};
 use std::fmt::Formatter;
-use std::ops::RangeBounds;
+use std::hash::Hasher;
 use std::{cmp::min, collections::HashSet, hash::Hash};
 
-#[derive(PartialEq, Eq, Hash, Clone, Copy)]
+#[derive(Eq, Clone, Copy)]
 pub struct Position {
     /// The rank (rank) of the position on the chess board. Starting from 0.
     pub rank: usize,
 
     /// The file (column) of the position on the chess board. Starting from 0.
     pub file: usize,
+}
+
+impl PartialEq for Position {
+    fn eq(&self, other: &Self) -> bool {
+        self.rank == other.rank && self.file == other.file
+    }
+}
+
+impl Hash for Position {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.rank.hash(state);
+        self.file.hash(state);
+    }
 }
 
 impl Position {
@@ -76,7 +89,7 @@ impl<'de> Deserialize<'de> for Position {
 impl Piece {
     pub fn get_valid_moves(
         &self,
-        current_position: Position,
+        current_position: &Position,
         board: &GameBoard,
     ) -> HashSet<Position> {
         match self.kind {
@@ -89,7 +102,7 @@ impl Piece {
         }
     }
 
-    fn check_position(moves: &mut HashSet<Position>, board: &GameBoard, color: Color, current_position: Position, rank_delta: isize, file_delta: isize) {
+    fn check_position(moves: &mut HashSet<Position>, board: &GameBoard, color: Color, current_position: &Position, rank_delta: isize, file_delta: isize) {
         let (rank, file) = (current_position.rank, current_position.file);
 
         let new_rank = (rank as isize) + rank_delta;
@@ -112,7 +125,7 @@ impl Piece {
         }
     }
 
-    fn explore_king(&self, current_position: Position, board: &GameBoard) -> HashSet<Position> {
+    fn explore_king(&self, current_position: &Position, board: &GameBoard) -> HashSet<Position> {
         let mut moves: HashSet<Position> = HashSet::new();
 
         Self::check_position(&mut moves, board, self.color, current_position, -1, -1);
@@ -128,20 +141,20 @@ impl Piece {
         moves
     }
 
-    fn explore_queen(&self, current_position: Position, board: &GameBoard) -> HashSet<Position> {
+    fn explore_queen(&self, current_position: &Position, board: &GameBoard) -> HashSet<Position> {
         let mut moves = self.look_sideways(current_position, board);
         moves.extend(self.look_up_and_down(current_position, board));
         moves.extend(self.look_diagonal(current_position, board));
         moves
     }
 
-    fn explore_rook(&self, current_position: Position, board: &GameBoard) -> HashSet<Position> {
+    fn explore_rook(&self, current_position: &Position, board: &GameBoard) -> HashSet<Position> {
         let mut moves = self.look_sideways(current_position, board);
         moves.extend(self.look_up_and_down(current_position, board));
         moves
     }
 
-    fn explore_knight(&self, current_position: Position, board: &GameBoard) -> HashSet<Position> {
+    fn explore_knight(&self, current_position: &Position, board: &GameBoard) -> HashSet<Position> {
         let mut moves: HashSet<Position> = HashSet::new();
 
         Self::check_position(&mut moves, board, self.color, current_position, -2, -1);
@@ -158,7 +171,7 @@ impl Piece {
         moves
     }
 
-    fn explore_pawn(&self, current_position: Position, board: &GameBoard) -> HashSet<Position> {
+    fn explore_pawn(&self, current_position: &Position, board: &GameBoard) -> HashSet<Position> {
         let mut moves: HashSet<Position> = HashSet::new();
 
         let starting_rank: u8 = match self.color {
@@ -174,7 +187,7 @@ impl Piece {
         Self::check_position(&mut moves, board, self.color, current_position, direction, 0);
 
         // Optional double move for first move
-        if (self.move_count == 0) {
+        if self.move_count == 0 {
             Self::check_position(&mut moves, board, self.color, current_position, direction * 2, 0);
         }
 
@@ -183,7 +196,7 @@ impl Piece {
         moves
     }
 
-    fn look_sideways(&self, current_position: Position, board: &GameBoard) -> HashSet<Position> {
+    fn look_sideways(&self, current_position: &Position, board: &GameBoard) -> HashSet<Position> {
         let mut valid_moves: HashSet<Position> = HashSet::new();
 
         // Explore left
@@ -230,7 +243,7 @@ impl Piece {
         valid_moves
     }
 
-    fn look_up_and_down(&self, current_position: Position, board: &GameBoard) -> HashSet<Position> {
+    fn look_up_and_down(&self, current_position: &Position, board: &GameBoard) -> HashSet<Position> {
         let mut valid_moves: HashSet<Position> = HashSet::new();
 
         // Explore down
@@ -277,7 +290,7 @@ impl Piece {
         valid_moves
     }
 
-    fn look_diagonal(&self, current_position: Position, board: &GameBoard) -> HashSet<Position> {
+    fn look_diagonal(&self, current_position: &Position, board: &GameBoard) -> HashSet<Position> {
         let mut valid_moves: HashSet<Position> = HashSet::new();
 
         // Explore to top left
@@ -398,10 +411,25 @@ mod test {
         let game = Game::new();
 
         let position = Position { rank: 0, file: 4 };
-        let king = game.get_piece_by_position(position).unwrap();
+        let king = game.get_piece_by_position(&position).unwrap();
 
-        let moves = king.get_valid_moves(position, &game.board.lock().unwrap());
+        let moves = king.get_valid_moves(&position, &game.board.lock().unwrap());
         assert_eq!(moves.len(), 0);
+    }
+
+    #[test]
+    fn king_moves_test_2() {
+        let game = Game::new();
+
+        let position = Position { rank: 0, file: 4 };
+        let king = game.get_piece_by_position(&position).unwrap();
+
+        let mut board = game.board.lock().unwrap();
+        board[position.rank][position.file] = None;
+        board[position.rank + 3][position.file] = Some(king);
+
+        let moves = king.get_valid_moves(&Position { rank: 3, file: 4 }, &board);
+        assert_eq!(moves.len(), 8);
     }
 
     #[test]
@@ -409,14 +437,14 @@ mod test {
         let mut game = Game::new();
 
         let position = Position { rank: 6, file: 3 };
-        let pawn = game.get_piece_by_position(position).unwrap();
-        let moves = pawn.get_valid_moves(position, &game.board.lock().unwrap());
+        let pawn = game.get_piece_by_position(&position).unwrap();
+        let moves = pawn.get_valid_moves(&position, &game.board.lock().unwrap());
         assert_eq!(moves.len(), 2);
 
-        let new_position = Position { rank: 6, file: 4 };
-        game.move_piece_at_position(position, new_position).expect("pawn move failed");
-        let pawn = game.get_piece_by_position(new_position).unwrap();
-        let moves = pawn.get_valid_moves(position, &game.board.lock().unwrap());
+        let new_position = Position { rank: 5, file: 3 };
+        game.move_piece_at_position(&position, &new_position).expect("pawn move failed");
+        let pawn = game.get_piece_by_position(&new_position).unwrap();
+        let moves = pawn.get_valid_moves(&new_position, &game.board.lock().unwrap());
         assert_eq!(moves.len(), 1);
     }
 }

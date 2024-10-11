@@ -129,11 +129,21 @@ export function ChessPiece({ kind, color, position }: Readonly<ChessPieceProps>)
 				dispatchActionState({
 					action: 'ready',
 				});
-			})().catch((error) => {
-				dispatchActionState({
-					action: 'error',
-					error,
-				});
+			})().catch(() => {
+				(async () => {
+					try {
+						await refreshGame();
+
+						dispatchActionState({
+							action: 'ready',
+						});
+					} catch (error) {
+						dispatchActionState({
+							action: 'error',
+							error,
+						});
+					}
+				})();
 			});
 		}
 	}, [isDragging, dispatchActionState, game, position, refreshGame]);

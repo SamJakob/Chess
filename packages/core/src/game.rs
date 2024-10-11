@@ -1,4 +1,4 @@
-use crate::error::PieceNotFoundError;
+use crate::error::MoveError;
 use crate::moves::Position;
 use chrono::serde::ts_milliseconds;
 use chrono::{DateTime, Utc};
@@ -211,17 +211,22 @@ impl Game {
         }
     }
 
-    pub fn get_piece_by_position(&self, position: Position) -> Option<Piece> {
+    pub fn get_piece_by_position(&self, position: &Position) -> Option<Piece> {
         self.board.lock().unwrap()[position.rank][position.file]
     }
 
-    pub fn move_piece_at_position(&mut self, position: Position, new_position: Position) -> Result<(), PieceNotFoundError> {
-        let piece = self.get_piece_by_position(position.clone());
+    pub fn move_piece_at_position(&mut self, position: &Position, new_position: &Position) -> Result<(), MoveError> {
+        let piece = self.get_piece_by_position(position);
         if piece.is_none() {
-            return Err(PieceNotFoundError);
+            return Err(MoveError::PieceNotFoundError);
         }
 
         let mut piece = piece.unwrap();
+        let valid_moves = piece.get_valid_moves(position, &self.board.lock().unwrap());
+        if !valid_moves.contains(new_position) {
+            return Err(MoveError::IllegalMoveError);
+        }
+
         piece.move_count += 1;
         self.board.lock().unwrap()[position.rank][position.file] = None;
         self.board.lock().unwrap()[new_position.rank][new_position.file] = Some(piece);

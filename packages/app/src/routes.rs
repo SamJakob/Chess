@@ -70,7 +70,7 @@ async fn post_move(data: web::Data<AppState>, path: web::Path<(String, String)>,
 
     match locate_game_by_id(data, game_id) {
         Ok((_, game)) => {
-            match game.lock().unwrap().move_piece_at_position(position, new_position) {
+            match game.lock().unwrap().move_piece_at_position(&position, &new_position) {
                 Ok(_) => HttpResponse::Ok().finish(),
                 Err(e) => HttpResponse::NotFound().body(format!("{:?}", e)),
             }
