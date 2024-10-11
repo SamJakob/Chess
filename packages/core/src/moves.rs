@@ -1,12 +1,12 @@
 use crate::game::{Color, Game, GameBoard, Piece, PieceKind};
 use serde::de::{SeqAccess, Visitor};
-use serde::{de, Deserialize, Deserializer};
+use serde::{de, Deserialize, Deserializer, Serialize};
 use std::fmt::{Display, Formatter};
 use std::hash::Hasher;
 use std::str::FromStr;
 use std::{cmp::min, collections::HashSet, hash::Hash};
 
-#[derive(Eq, Clone, Copy)]
+#[derive(Eq, Clone, Copy, Serialize)]
 pub struct Position {
     /// The rank (row) of the position on the chess board. Starting from 0.
     pub rank: usize,
@@ -222,11 +222,6 @@ impl Piece {
 
     fn explore_pawn(&self, current_position: &Position, board: &GameBoard) -> HashSet<Position> {
         let mut moves: HashSet<Position> = HashSet::new();
-
-        let starting_rank: u8 = match self.color {
-            Color::White => 6,
-            Color::Black => 1,
-        };
 
         let direction: isize = match self.color {
             Color::White => -1,

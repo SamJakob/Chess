@@ -1,10 +1,12 @@
 use crate::error::MoveError;
+use crate::game::Color::{Black, White};
 use crate::game::PieceKind::King;
 use crate::moves::Position;
 use chrono::serde::ts_milliseconds;
 use chrono::{DateTime, Utc};
 use serde::ser::SerializeSeq;
 use serde::{Serialize, Serializer};
+use std::collections::BTreeMap;
 use std::fmt::{Display, Formatter, Write};
 use std::sync::{Arc, Mutex};
 
@@ -63,7 +65,7 @@ impl Serialize for PieceKind {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Color {
     Black,
     White,
@@ -167,19 +169,51 @@ where
     ranks.end()
 }
 
-#[derive(Serialize)]
 pub struct Game {
     /// ID of the game in the [crate::game_manager::GameManager] (if the game belongs to a
     /// GameManager]).
     id: Option<String>,
 
     /// 8x8 grid of pieces. Rank (1-8) then file (A-H).
-    #[serde(serialize_with = "serialize_game_board")]
     pub board: Arc<Mutex<GameBoard>>,
 
     /// The [Instant] the game was created.
-    #[serde(with = "ts_milliseconds")]
     created_at: DateTime<Utc>,
+
+    /// The list of moves in the game.
+    moves: Arc<Mutex<Vec<(Position, Position)>>>,
+}
+
+impl Serialize for Game {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        #[derive(Serialize)]
+        struct Game<'a> {
+            id: &'a Option<String>,
+            #[serde(serialize_with = "serialize_game_board")]
+            board: &'a Arc<Mutex<GameBoard>>,
+            #[serde(with = "ts_milliseconds")]
+            created_at: &'a DateTime<Utc>,
+            is_player_in_check: &'a BTreeMap<Color, bool>,
+            moves_count: usize,
+        }
+
+        let mut is_player_in_check = BTreeMap::new();
+        is_player_in_check.insert(White, self.is_player_in_check(White));
+        is_player_in_check.insert(Black, self.is_player_in_check(Black));
+
+        let game = Game {
+            id: &self.id,
+            board: &self.board,
+            created_at: &self.created_at,
+            is_player_in_check: &is_player_in_check,
+            moves_count: self.moves.lock().unwrap().len(),
+        };
+
+        game.serialize(serializer)
+    }
 }
 
 impl Default for Game {
@@ -210,6 +244,7 @@ impl Game {
             id,
             board,
             created_at: Utc::now(),
+            moves: Arc::new(Mutex::new(Vec::new())),
         }
     }
 
@@ -246,6 +281,8 @@ impl Game {
         let mut board = self.board.lock().unwrap();
         board[position.rank][position.file] = None;
         board[new_position.rank][new_position.file] = Some(piece);
+
+        self.moves.lock().unwrap().push((*position, *new_position));
         Ok(())
     }
 
