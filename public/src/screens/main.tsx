@@ -27,6 +27,7 @@ export function MainScreen() {
 				<h1 className="text-2xl font-extrabold">Chess</h1>
 				<p>API Version: {api.version}</p>
 				<p>Duration: {dayjs.duration(offset).format('HH:mm:ss')}</p>
+				<p>Game ID: {game.id}</p>
 			</div>
 			<main>
 				<ChessBoard />

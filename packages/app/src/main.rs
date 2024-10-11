@@ -1,6 +1,6 @@
 mod routes;
 
-use crate::routes::{get_details, get_game, get_games, post_move, put_game};
+use crate::routes::{delete_game, get_details, get_game, get_games, post_move, put_game};
 use actix_web::http::header::{ACCESS_CONTROL_ALLOW_HEADERS, ACCESS_CONTROL_ALLOW_METHODS, ACCESS_CONTROL_ALLOW_ORIGIN, CONTENT_TYPE};
 use actix_web::http::Method;
 use actix_web::{middleware, web, App, HttpResponse, HttpServer};
@@ -30,6 +30,7 @@ async fn main() -> std::io::Result<()> {
             .service(get_games)
             .service(put_game)
             .service(get_game)
+            .service(delete_game)
             .service(post_move)
             .default_service(web::route().method(Method::OPTIONS).to(HttpResponse::Ok))
     }).bind(ADDRESS)?

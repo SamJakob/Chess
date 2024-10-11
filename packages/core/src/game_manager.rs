@@ -31,6 +31,10 @@ impl GameManager {
     pub fn get_game(&self, id: Uuid) -> Option<Arc<Mutex<Game>>> {
         self.games.get(&id).cloned()
     }
+
+    pub fn delete_game(&mut self, id: Uuid) {
+        self.games.remove(&id);
+    }
 }
 
 impl Default for GameManager {

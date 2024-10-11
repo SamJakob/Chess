@@ -5,7 +5,6 @@ use chrono::{DateTime, Utc};
 use serde::ser::SerializeSeq;
 use serde::{Serialize, Serializer};
 use std::fmt::{Display, Formatter, Write};
-use std::time::Instant;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum PieceKind {
