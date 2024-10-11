@@ -16,9 +16,7 @@ struct VersionResponse<'a> {
 
 #[get("/details")]
 async fn get_details() -> impl Responder {
-    HttpResponse::Ok().body(serde_json::to_string(&VersionResponse {
-        version: VERSION
-    }).unwrap())
+    HttpResponse::Ok().body(serde_json::to_string(&VersionResponse { version: VERSION }).unwrap())
 }
 
 #[get("/games")]
@@ -39,7 +37,7 @@ async fn put_game(data: web::Data<AppState>) -> impl Responder {
 async fn get_game(data: web::Data<AppState>, game_id: web::Path<String>) -> impl Responder {
     match locate_game_by_id(data, game_id.into_inner()) {
         Ok((_, game)) => HttpResponse::Ok().body(serde_json::to_string(&game).unwrap()),
-        Err(e) => e
+        Err(e) => e,
     }
 }
 
@@ -51,12 +49,16 @@ async fn delete_game(data: web::Data<AppState>, game_id: web::Path<String>) -> i
             game_manager.delete_game(id);
             HttpResponse::Ok().finish()
         }
-        Err(e) => e
+        Err(e) => e,
     }
 }
 
 #[post("/game/{game_id}/{position}/move")]
-async fn post_move(data: web::Data<AppState>, path: web::Path<(String, String)>, new_position: web::Json<Position>) -> impl Responder {
+async fn post_move(
+    data: web::Data<AppState>,
+    path: web::Path<(String, String)>,
+    new_position: web::Json<Position>,
+) -> impl Responder {
     let (game_id, raw_position) = path.into_inner();
     let position = serde_json::from_str::<Position>(&raw_position);
 
@@ -70,16 +72,23 @@ async fn post_move(data: web::Data<AppState>, path: web::Path<(String, String)>,
 
     match locate_game_by_id(data, game_id) {
         Ok((_, game)) => {
-            match game.lock().unwrap().move_piece_at_position(position, new_position) {
+            match game
+                .lock()
+                .unwrap()
+                .move_piece_at_position(&position, &new_position)
+            {
                 Ok(_) => HttpResponse::Ok().finish(),
                 Err(e) => HttpResponse::NotFound().body(format!("{:?}", e)),
             }
         }
-        Err(e) => e
+        Err(e) => e,
     }
 }
 
-fn locate_game_by_id(data: web::Data<AppState>, id: String) -> Result<(Uuid, Arc<Mutex<Game>>), HttpResponse> {
+fn locate_game_by_id(
+    data: web::Data<AppState>,
+    id: String,
+) -> Result<(Uuid, Arc<Mutex<Game>>), HttpResponse> {
     let uuid = Uuid::from_str(id.as_str());
 
     match uuid {
@@ -87,7 +96,9 @@ fn locate_game_by_id(data: web::Data<AppState>, id: String) -> Result<(Uuid, Arc
             let game_manager = data.game_manager.lock().unwrap();
             match game_manager.get_game(uuid) {
                 Some(game) => Ok((uuid, game)),
-                None => Err(HttpResponse::NotFound().body("No game found for the supplied game ID")),
+                None => {
+                    Err(HttpResponse::NotFound().body("No game found for the supplied game ID"))
+                }
             }
         }
         Err(_) => Err(HttpResponse::BadRequest().body("Invalid game ID")),

@@ -1,10 +1,16 @@
 use std::fmt::{Display, Formatter};
 
 #[derive(Debug, Clone)]
-pub struct PieceNotFoundError;
+pub enum MoveError {
+    PieceNotFoundError,
+    IllegalMoveError,
+}
 
-impl Display for PieceNotFoundError {
+impl Display for MoveError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        f.write_str("no piece found at the specified position")
+        match *self {
+            MoveError::PieceNotFoundError => write!(f, "no piece found at the specified position"),
+            MoveError::IllegalMoveError => write!(f, "illegal move"),
+        }
     }
 }

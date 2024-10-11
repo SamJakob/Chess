@@ -9,7 +9,9 @@ pub struct GameManager {
 
 impl GameManager {
     pub fn new() -> GameManager {
-        GameManager { games: BTreeMap::new() }
+        GameManager {
+            games: BTreeMap::new(),
+        }
     }
 
     /// Create and return a new game instance.
