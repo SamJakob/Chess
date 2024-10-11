@@ -1,25 +1,14 @@
-// LINEAR
-// DIAGONAL
-
-// LIMITED
-// UNLIMITED
-
-// COLLISIONS
-// NO COLLISIONS
-
-// EN PASSANT
-// CASTLING
-
-use crate::game::{Color, GameBoard, Piece, PieceKind};
+use crate::game::{Color, Game, GameBoard, Piece, PieceKind};
 use serde::de::{SeqAccess, Visitor};
 use serde::{de, Deserialize, Deserializer};
+use serde_json::map::Iter;
 use std::fmt::Formatter;
 use std::hash::Hasher;
 use std::{cmp::min, collections::HashSet, hash::Hash};
 
 #[derive(Eq, Clone, Copy)]
 pub struct Position {
-    /// The rank (rank) of the position on the chess board. Starting from 0.
+    /// The rank (row) of the position on the chess board. Starting from 0.
     pub rank: usize,
 
     /// The file (column) of the position on the chess board. Starting from 0.
@@ -221,101 +210,102 @@ impl Piece {
         moves
     }
 
-    fn look_sideways(&self, current_position: &Position, board: &GameBoard) -> HashSet<Position> {
+    fn explore_pos_and_break(
+        position: &Position,
+        color: Color,
+        board: &GameBoard,
+    ) -> (bool, Option<Position>) {
+        let piece_at_position = Game::get_piece(board, position);
+
+        // Unoccupied or can take
+        if piece_at_position.is_none() {
+            return (false, Some(position));
+        }
+        if piece_at_position.unwrap().color != color {
+            return (true, Some(position));
+        }
+        // square is occupied so stop exploring
+        (true, None)
+    }
+
+    fn explore_rank<I>(rank: usize, files: I, color: Color, board: GameBoard) -> HashSet<Position>
+    where
+        I: IntoIterator<Item = usize>,
+    {
         let mut valid_moves: HashSet<Position> = HashSet::new();
-
-        // Explore left
-        for new_col in (0..current_position.file).rev() {
-            let position = Position {
-                rank: current_position.rank,
-                file: new_col,
-            };
-
-            let piece_at_position = board[current_position.rank][new_col];
-
-            // Unoccupied or can take
-            if piece_at_position.is_none() {
-                valid_moves.insert(position);
-                continue;
+        for new_col in files {
+            let (break_out, valid_move) = Piece::explore_pos_and_break(
+                Position {
+                    rank: rank,
+                    file: new_col,
+                },
+                color,
+                board,
+            );
+            if valid_move.is_some() {
+                valid_moves.insert(valid_move.unwrap());
             }
-            if piece_at_position.unwrap().color != self.color {
-                valid_moves.insert(position);
+            if break_out {
+                break;
             }
-            // square is occupied so stop exploring
-            break;
         }
-
-        // explore right
-        for new_col in current_position.file + 1..8 {
-            let position = Position {
-                rank: current_position.rank,
-                file: new_col,
-            };
-
-            let piece_at_position = board[current_position.rank][new_col];
-
-            // Unoccupied or can take
-            if piece_at_position.is_none() || piece_at_position.unwrap().color != self.color {
-                valid_moves.insert(position);
-            }
-            if piece_at_position.is_none() {
-                continue;
-            }
-            // square is occupied so stop exploring
-            break;
-        }
-
         valid_moves
     }
 
-    fn look_up_and_down(
-        &self,
-        current_position: &Position,
-        board: &GameBoard,
-    ) -> HashSet<Position> {
+    fn explore_file<I>(file: usize, ranks: I, color: Color, board: &GameBoard) -> HashSet<Position>
+    where
+        I: IntoIterator<Item = usize>,
+    {
         let mut valid_moves: HashSet<Position> = HashSet::new();
+        for rank in ranks {
+            let (break_out, valid_move) = Piece::explore_pos_and_break(
+                Position {
+                    rank: rank,
+                    file: file,
+                },
+                color,
+                board,
+            );
+            if valid_move.is_some() {
+                valid_moves.insert(valid_move.unwrap());
+            }
+            if break_out {
+                break;
+            }
+        }
+        valid_moves
+    }
 
+    fn look_sideways(&self, current_position: Position, board: GameBoard) -> HashSet<Position> {
+        let mut valid_moves: HashSet<Position> = Piece::explore_rank(
+            current_position.rank,
+            (0..current_position.file).rev(),
+            self.color,
+            board,
+        );
+        valid_moves.extend(Piece::explore_rank(
+            current_position.rank,
+            current_position.file + 1..8,
+            self.color,
+            board,
+        ));
+        valid_moves
+    }
+
+    fn look_up_and_down(&self, current_position: Position, board: GameBoard) -> HashSet<Position> {
         // Explore down
-        for new_rank in current_position.rank + 1..8 {
-            let position = Position {
-                rank: new_rank,
-                file: current_position.file,
-            };
-
-            let piece_at_position = board[new_rank][current_position.file];
-
-            // Unoccupied or can take
-            if piece_at_position.is_none() {
-                valid_moves.insert(position);
-                continue;
-            }
-            if piece_at_position.unwrap().color != self.color {
-                valid_moves.insert(position);
-            }
-            // square is occupied so stop exploring
-            break;
-        }
-
-        // explore up
-        for new_rank in (0..current_position.file).rev() {
-            let position = Position {
-                rank: new_rank,
-                file: current_position.file,
-            };
-
-            let piece_at_position = board[new_rank][current_position.file];
-
-            // Unoccupied or can take
-            if piece_at_position.is_none() || piece_at_position.unwrap().color != self.color {
-                valid_moves.insert(position);
-            }
-            if piece_at_position.is_none() {
-                continue;
-            }
-            // square is occupied so stop exploring
-            break;
-        }
-
+        let mut valid_moves: HashSet<Position> = Piece::explore_file(
+            current_position.rank,
+            current_position.rank + 1..8,
+            self.color,
+            board,
+        );
+        valid_moves.extend(Piece::explore_rank(
+            current_position.rank,
+            (0..current_position.file).rev(),
+            self.color,
+            board,
+        ));
         valid_moves
     }
 
@@ -324,86 +314,74 @@ impl Piece {
 
         // Explore to top left
         for dev in 1..min(current_position.file, current_position.rank) {
-            let position = Position {
-                rank: current_position.rank - dev,
-                file: current_position.file - dev,
-            };
-
-            let piece_at_position = board[position.rank][position.file];
-
-            // Unoccupied or can take
-            if piece_at_position.is_none() {
-                valid_moves.insert(position);
-                continue;
+            let (break_out, valid_move) = Piece::explore_pos_and_break(
+                Position {
+                    rank: current_position.rank - dev,
+                    file: current_position.file - dev,
+                },
+                self.color,
+                board,
+            );
+            if valid_move.is_some() {
+                valid_moves.insert(valid_move.unwrap());
             }
-            if piece_at_position.unwrap().color != self.color {
-                valid_moves.insert(position);
+            if break_out {
+                break;
             }
-            // square is occupied so stop exploring
-            break;
         }
 
         // Explore to bottom left
         for dev in 1..min(current_position.file, current_position.rank) {
-            let position = Position {
-                rank: current_position.rank + dev,
-                file: current_position.file - dev,
-            };
-
-            let piece_at_position = board[position.rank][position.file];
-
-            // Unoccupied or can take
-            if piece_at_position.is_none() {
-                valid_moves.insert(position);
-                continue;
+            let (break_out, valid_move) = Piece::explore_pos_and_break(
+                Position {
+                    rank: current_position.rank + dev,
+                    file: current_position.file - dev,
+                },
+                self.color,
+                board,
+            );
+            if valid_move.is_some() {
+                valid_moves.insert(valid_move.unwrap());
             }
-            if piece_at_position.unwrap().color != self.color {
-                valid_moves.insert(position);
+            if break_out {
+                break;
             }
-            // square is occupied so stop exploring
-            break;
         }
 
         // Explore to top right
         for dev in 1..min(current_position.file, current_position.rank) {
-            let position = Position {
-                rank: current_position.rank - dev,
-                file: current_position.file + dev,
-            };
-
-            let piece_at_position = board[position.rank][position.file];
-
-            // Unoccupied or can take
-            if piece_at_position.is_none() {
-                valid_moves.insert(position);
-                continue;
+            let (break_out, valid_move) = Piece::explore_pos_and_break(
+                Position {
+                    rank: current_position.rank - dev,
+                    file: current_position.file + dev,
+                },
+                self.color,
+                board,
+            );
+            if valid_move.is_some() {
+                valid_moves.insert(valid_move.unwrap());
             }
-            if piece_at_position.unwrap().color != self.color {
-                valid_moves.insert(position);
+            if break_out {
+                break;
             }
-            // square is occupied so stop exploring
-            break;
         }
 
         // Explore to bottom right
         for dev in 1..min(current_position.file, current_position.rank) {
-            let position = Position {
-                rank: current_position.rank + dev,
-                file: current_position.file + dev,
-            };
-
-            let piece_at_position = board[position.rank][position.file];
-
-            // Unoccupied or can take
-            if piece_at_position.is_none() {
-                valid_moves.insert(position);
-                continue;
+            let (break_out, valid_move) = Piece::explore_pos_and_break(
+                Position {
+                    rank: current_position.rank + dev,
+                    file: current_position.file + dev,
+                },
+                self.color,
+                board,
+            );
+            if valid_move.is_some() {
+                valid_moves.insert(valid_move.unwrap());
             }
-            if piece_at_position.unwrap().color != self.color {
-                valid_moves.insert(position);
+            if break_out {
+                break;
             }
-            // square is occupied so stop exploring
-            break;
         }
 
         valid_moves
