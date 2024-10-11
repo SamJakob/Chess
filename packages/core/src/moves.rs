@@ -41,6 +41,43 @@ impl Position {
         Self::validate(rank, file);
         Position { rank, file }
     }
+
+    pub fn to_string(&self) -> String {
+        let col = char::from(self.file as u8 + 'A' as u8);
+        let row = 8 - self.rank;
+
+        return format!("{}{}", col, row);
+    }
+
+    pub fn from_string(pos: String) -> Option<Position> {
+        // Convert position string (e.g., "B2") to x and y indices
+        let col: usize = pos.chars().next().unwrap().to_ascii_lowercase() as usize;
+
+        if col > ('h' as usize) {
+            return None; //panic!("Position out of bounds");
+        }
+
+        let col_value = col - 'a' as usize; // 0-indexed
+        let row: usize = pos.chars().nth(1).unwrap().to_digit(10).unwrap() as usize; // 0-indexed
+
+        if row > 8 {
+            return None; //panic!("Position out of bounds");
+        }
+
+        let row_value = 8 - row;
+
+        Some(Position {
+            rank: row_value,
+            file: col_value,
+        })
+    }
+
+    pub fn transition(&self, rank: i8, file: i8) -> Position {
+        Position::new(
+            (self.rank as i8 + rank) as usize,
+            (self.file as i8 - file) as usize,
+        )
+    }
 }
 
 impl<'de> Deserialize<'de> for Position {
@@ -328,7 +365,7 @@ impl Piece {
         }
 
         // Explore to bottom left
-        for dev in 1..min(current_position.file, current_position.rank) {
+        for dev in 1..min(current_position.file, 8 - current_position.rank) {
             let (break_out, valid_move) = Piece::explore_pos_and_break(
                 &Position {
                     rank: current_position.rank + dev,
@@ -346,7 +383,7 @@ impl Piece {
         }
 
         // Explore to top right
-        for dev in 1..min(current_position.file, current_position.rank) {
+        for dev in 1..min(8 - current_position.file, current_position.rank) {
             let (break_out, valid_move) = Piece::explore_pos_and_break(
                 &Position {
                     rank: current_position.rank - dev,
@@ -364,7 +401,7 @@ impl Piece {
         }
 
         // Explore to bottom right
-        for dev in 1..min(current_position.file, current_position.rank) {
+        for dev in 1..min(8 - current_position.file, 8 - current_position.rank) {
             let (break_out, valid_move) = Piece::explore_pos_and_break(
                 &Position {
                     rank: current_position.rank + dev,
@@ -387,9 +424,33 @@ impl Piece {
 
 #[cfg(test)]
 mod test {
-    use crate::game::Game;
+    use crate::game::{Color, Game, Piece};
     use crate::moves::Position;
     use std::sync::Mutex;
+
+    #[test]
+    fn bishop_moves_test() {
+        let game = Game::new();
+        let mut board = game.board.lock().unwrap();
+
+        let bishop_position_original = Position { rank: 7, file: 2 };
+        let bishop = game
+            .get_piece_by_position(&board, &bishop_position_original)
+            .unwrap();
+        board[bishop_position_original.rank][bishop_position_original.file] = None;
+
+        let bishop_position = Position::from_string("C2".to_string()).unwrap();
+        board[bishop_position.rank][bishop_position.file] = Some(bishop);
+
+        let bishop = Piece {
+            kind: crate::game::PieceKind::Bishop,
+            color: Color::White,
+            move_count: 0,
+        };
+
+        let moves = bishop.get_valid_moves(&bishop_position, &board);
+        assert_eq!(moves.len(), 6);
+    }
 
     #[test]
     fn king_moves_test() {
