@@ -26,7 +26,7 @@ impl PieceKind {
             'N' => Some(PieceKind::Knight),
             'R' => Some(PieceKind::Rook),
             'P' => Some(PieceKind::Pawn),
-            _ => None
+            _ => None,
         }
     }
 
@@ -73,7 +73,7 @@ impl Color {
         match c {
             'B' => Some(Color::Black),
             'W' => Some(Color::White),
-            _ => None
+            _ => None,
         }
     }
 
@@ -108,7 +108,8 @@ pub struct Piece {
 
 impl Display for Piece {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        f.write_char(self.color.char()).and(f.write_char(self.kind.char()))
+        f.write_char(self.color.char())
+            .and(f.write_char(self.kind.char()))
     }
 }
 
@@ -185,6 +186,7 @@ impl Game {
     }
 
     pub fn new_with_id(id: Option<String>) -> Game {
+        #[rustfmt::skip]
         let board = Arc::new(Mutex::new([
             [p!("BR"), p!("BN"), p!("BB"), p!("BQ"), p!("BK"), p!("BB"), p!("BN"), p!("BR")],
             [p!("BP"), p!("BP"), p!("BP"), p!("BP"), p!("BP"), p!("BP"), p!("BP"), p!("BP")],
@@ -215,7 +217,11 @@ impl Game {
         self.board.lock().unwrap()[position.rank][position.file]
     }
 
-    pub fn move_piece_at_position(&mut self, position: &Position, new_position: &Position) -> Result<(), MoveError> {
+    pub fn move_piece_at_position(
+        &mut self,
+        position: &Position,
+        new_position: &Position,
+    ) -> Result<(), MoveError> {
         let piece = self.get_piece_by_position(position);
         if piece.is_none() {
             return Err(MoveError::PieceNotFoundError);
@@ -249,21 +255,27 @@ mod tests {
             for (file, piece) in files.iter().enumerate() {
                 let has_piece = piece.is_some();
 
-                assert_eq!(has_piece, match rank {
-                    // All files in the first two and last two ranks should have a piece.
-                    0 | 1 | 6 | 7 => true,
-                    _ => false
-                });
+                assert_eq!(
+                    has_piece,
+                    match rank {
+                        // All files in the first two and last two ranks should have a piece.
+                        0 | 1 | 6 | 7 => true,
+                        _ => false,
+                    }
+                );
 
                 if has_piece {
                     let piece = piece.unwrap();
                     assert_eq!(piece.move_count, 0);
 
-                    assert_eq!(piece.kind == PieceKind::Pawn, match rank {
-                        // The second and second-last ranks should have a pawn.
-                        1 | 6 => true,
-                        _ => false
-                    });
+                    assert_eq!(
+                        piece.kind == PieceKind::Pawn,
+                        match rank {
+                            // The second and second-last ranks should have a pawn.
+                            1 | 6 => true,
+                            _ => false,
+                        }
+                    );
 
                     // Check that the queen is on her own color.
                     if piece.kind == PieceKind::Queen {

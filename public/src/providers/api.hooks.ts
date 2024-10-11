@@ -1,7 +1,7 @@
-import { createContext, useContext } from 'react';
+import {createContext, useContext} from 'react';
 
 export interface APIDetails {
-	version: string;
+    version: string;
 }
 
 export const APIDetailsContext = createContext<APIDetails | undefined>(undefined);

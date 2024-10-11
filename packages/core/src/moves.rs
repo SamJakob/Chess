@@ -41,8 +41,12 @@ impl Hash for Position {
 
 impl Position {
     fn validate(rank: usize, file: usize) {
-        if rank >= 8 { panic!("invalid rank: {}", rank); }
-        if file >= 8 { panic!("invalid file: {}", file); }
+        if rank >= 8 {
+            panic!("invalid rank: {}", rank);
+        }
+        if file >= 8 {
+            panic!("invalid file: {}", file);
+        }
     }
 
     pub fn new(rank: usize, file: usize) -> Position {
@@ -69,13 +73,13 @@ impl<'de> Deserialize<'de> for Position {
             where
                 S: SeqAccess<'de>,
             {
-                let rank = seq.next_element()?.ok_or_else(|| {
-                    de::Error::custom("failed to obtain rank of tuple")
-                })?;
+                let rank = seq
+                    .next_element()?
+                    .ok_or_else(|| de::Error::custom("failed to obtain rank of tuple"))?;
 
-                let file = seq.next_element()?.ok_or_else(|| {
-                    de::Error::custom("failed to obtain file of tuple")
-                })?;
+                let file = seq
+                    .next_element()?
+                    .ok_or_else(|| de::Error::custom("failed to obtain file of tuple"))?;
 
                 Ok(Position { rank, file })
             }
@@ -98,11 +102,18 @@ impl Piece {
             PieceKind::Rook => self.explore_rook(current_position, board),
             PieceKind::Bishop => self.look_diagonal(current_position, board),
             PieceKind::Knight => self.explore_knight(current_position, board),
-            PieceKind::Pawn => self.explore_pawn(current_position, board)
+            PieceKind::Pawn => self.explore_pawn(current_position, board),
         }
     }
 
-    fn check_position(moves: &mut HashSet<Position>, board: &GameBoard, color: Color, current_position: &Position, rank_delta: isize, file_delta: isize) {
+    fn check_position(
+        moves: &mut HashSet<Position>,
+        board: &GameBoard,
+        color: Color,
+        current_position: &Position,
+        rank_delta: isize,
+        file_delta: isize,
+    ) {
         let (rank, file) = (current_position.rank, current_position.file);
 
         let new_rank = (rank as isize) + rank_delta;
@@ -176,19 +187,33 @@ impl Piece {
 
         let starting_rank: u8 = match self.color {
             Color::White => 6,
-            Color::Black => 1
+            Color::Black => 1,
         };
 
         let direction: isize = match self.color {
             Color::White => -1,
-            Color::Black => 1
+            Color::Black => 1,
         };
 
-        Self::check_position(&mut moves, board, self.color, current_position, direction, 0);
+        Self::check_position(
+            &mut moves,
+            board,
+            self.color,
+            current_position,
+            direction,
+            0,
+        );
 
         // Optional double move for first move
         if self.move_count == 0 {
-            Self::check_position(&mut moves, board, self.color, current_position, direction * 2, 0);
+            Self::check_position(
+                &mut moves,
+                board,
+                self.color,
+                current_position,
+                direction * 2,
+                0,
+            );
         }
 
         //TODO: en passant???
@@ -243,7 +268,11 @@ impl Piece {
         valid_moves
     }
 
-    fn look_up_and_down(&self, current_position: &Position, board: &GameBoard) -> HashSet<Position> {
+    fn look_up_and_down(
+        &self,
+        current_position: &Position,
+        board: &GameBoard,
+    ) -> HashSet<Position> {
         let mut valid_moves: HashSet<Position> = HashSet::new();
 
         // Explore down
@@ -442,7 +471,8 @@ mod test {
         assert_eq!(moves.len(), 2);
 
         let new_position = Position { rank: 5, file: 3 };
-        game.move_piece_at_position(&position, &new_position).expect("pawn move failed");
+        game.move_piece_at_position(&position, &new_position)
+            .expect("pawn move failed");
         let pawn = game.get_piece_by_position(&new_position).unwrap();
         let moves = pawn.get_valid_moves(&new_position, &game.board.lock().unwrap());
         assert_eq!(moves.len(), 1);
