@@ -1,4 +1,5 @@
-use crate::game::{Color, Game, GameBoard, Piece, PieceKind};
+use crate::game::PieceKind::{Bishop, King, Knight, Pawn, Queen, Rook};
+use crate::game::{Color, Game, GameBoard, Piece};
 use serde::de::{SeqAccess, Visitor};
 use serde::{de, Deserialize, Deserializer, Serialize};
 use std::fmt::{Display, Formatter};
@@ -135,12 +136,12 @@ impl Piece {
         let board = &game.board.lock().unwrap();
 
         match self.kind {
-            PieceKind::King => self.explore_king(current_position, board),
-            PieceKind::Queen => self.explore_queen(current_position, board),
-            PieceKind::Rook => self.explore_rook(current_position, board),
-            PieceKind::Bishop => self.look_diagonal(current_position, board),
-            PieceKind::Knight => self.explore_knight(current_position, board),
-            PieceKind::Pawn => self.explore_pawn(current_position, board),
+            King => self.explore_king(current_position, board),
+            Queen => self.explore_queen(current_position, board),
+            Rook => self.explore_rook(current_position, board),
+            Bishop => self.look_diagonal(current_position, board),
+            Knight => self.explore_knight(current_position, board),
+            Pawn => self.explore_pawn(current_position, board),
         }
     }
 
@@ -432,6 +433,7 @@ impl Piece {
 
 #[cfg(test)]
 mod test {
+    use crate::game::PieceKind::Bishop;
     use crate::game::{Color, Game, Piece};
     use crate::moves::Position;
     use std::str::FromStr;
@@ -454,7 +456,7 @@ mod test {
         }
 
         let bishop = Piece {
-            kind: crate::game::PieceKind::Bishop,
+            kind: Bishop,
             color: Color::White,
             move_count: 0,
         };

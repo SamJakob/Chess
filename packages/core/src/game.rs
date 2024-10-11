@@ -319,8 +319,8 @@ impl Game {
 #[cfg(test)]
 mod test {
     use crate::game::Color::{Black, White};
-    use crate::game::PieceKind::{King, Queen};
-    use crate::game::{Game, PieceKind};
+    use crate::game::Game;
+    use crate::game::PieceKind::{King, Pawn, Queen};
     use crate::moves::Position;
     use std::str::FromStr;
 
@@ -349,7 +349,7 @@ mod test {
                     assert_eq!(piece.move_count, 0);
 
                     assert_eq!(
-                        piece.kind == PieceKind::Pawn,
+                        piece.kind == Pawn,
                         match rank {
                             // The second and second-last ranks should have a pawn.
                             1 | 6 => true,
