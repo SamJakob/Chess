@@ -426,4 +426,79 @@ mod test {
         assert!(!game.is_player_in_check(White));
         assert!(game.is_player_in_check(Black));
     }
+
+    #[test]
+    fn test_turns() {
+        let game = Game::new();
+
+        let white_pawn_position_original = Position::from_str("C2").unwrap();
+        let white_pawn_position_1 = Position::from_str("C3").unwrap();
+        let white_pawn_position_2 = Position::from_str("C4").unwrap();
+
+        let black_pawn_position_original = Position::from_str("C7").unwrap();
+        let black_pawn_position_1 = Position::from_str("C6").unwrap();
+
+        // Assert that it's white's turn.
+        assert_eq!(game.get_current_move(), White);
+
+        let white_pawn = game
+            .get_piece_by_position(&white_pawn_position_original)
+            .unwrap();
+        assert_eq!(white_pawn.move_count, 0);
+
+        // Move the white pawn to start the game.
+        game.move_piece_at_position(&white_pawn_position_original, &white_pawn_position_1)
+            .expect("failed to move white pawn");
+
+        // Assert that a move has occurred.
+        let white_pawn = game.get_piece_by_position(&white_pawn_position_1).unwrap();
+        assert_eq!(white_pawn.move_count, 1);
+        assert!(game
+            .get_piece_by_position(&white_pawn_position_original)
+            .is_none());
+
+        // Assert that it's now black's turn.
+        assert_eq!(game.get_current_move(), Black);
+
+        // Try (and fail) to move white again.
+        game.move_piece_at_position(&white_pawn_position_1, &white_pawn_position_2)
+            .expect_err("expected white pawn move to fail out of turn");
+
+        // Assert that the move failed (i.e., the state has remained the same).
+        let white_pawn = game.get_piece_by_position(&white_pawn_position_1).unwrap();
+        assert_eq!(white_pawn.move_count, 1);
+        assert_eq!(game.get_current_move(), Black);
+        assert!(game.get_piece_by_position(&white_pawn_position_2).is_none());
+
+        // Assert that the black pawn has not yet moved.
+        let black_pawn = game
+            .get_piece_by_position(&black_pawn_position_original)
+            .unwrap();
+        assert_eq!(black_pawn.move_count, 0);
+
+        // Move the black pawn.
+        game.move_piece_at_position(&black_pawn_position_original, &black_pawn_position_1)
+            .unwrap();
+        let black_pawn = game.get_piece_by_position(&black_pawn_position_1).unwrap();
+        assert_eq!(black_pawn.move_count, 1);
+
+        // Assert that the black move succeeded and it's now white's turn.
+        assert_eq!(game.get_current_move(), White);
+        assert!(game
+            .get_piece_by_position(&black_pawn_position_original)
+            .is_none());
+
+        // Assert that the white pawn still hasn't moved.
+        assert_eq!(white_pawn.move_count, 1);
+
+        // Try to move the white pawn (it should succeed).
+        game.move_piece_at_position(&white_pawn_position_1, &white_pawn_position_2)
+            .expect("failed to move white pawn during turn");
+
+        // Assert that the move succeeded (i.e., the state has remained the same).
+        let white_pawn = game.get_piece_by_position(&white_pawn_position_2).unwrap();
+        assert_eq!(white_pawn.move_count, 2);
+        assert_eq!(game.get_current_move(), Black);
+        assert!(game.get_piece_by_position(&white_pawn_position_1).is_none());
+    }
 }
