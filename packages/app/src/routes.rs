@@ -47,7 +47,7 @@ async fn get_game(data: web::Data<AppState>, game_id: web::Path<String>) -> impl
 async fn delete_game(data: web::Data<AppState>, game_id: web::Path<String>) -> impl Responder {
     let mut game_manager = data.game_manager.lock().unwrap();
     match locate_game_by_id(data.clone(), game_id.into_inner()) {
-        Ok((id, game)) => {
+        Ok((id, _)) => {
             game_manager.delete_game(id);
             HttpResponse::Ok().finish()
         }
