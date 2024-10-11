@@ -1,6 +1,6 @@
 use crate::error::MoveError;
 use crate::game::Color::{Black, White};
-use crate::game::PieceKind::King;
+use crate::game::PieceKind::{Bishop, King, Knight, Pawn, Queen, Rook};
 use crate::moves::Position;
 use chrono::serde::ts_milliseconds;
 use chrono::{DateTime, Utc};
@@ -23,34 +23,34 @@ pub enum PieceKind {
 impl PieceKind {
     fn from_char(name: char) -> Option<PieceKind> {
         match name {
-            'K' => Some(PieceKind::King),
-            'Q' => Some(PieceKind::Queen),
-            'B' => Some(PieceKind::Bishop),
-            'N' => Some(PieceKind::Knight),
-            'R' => Some(PieceKind::Rook),
-            'P' => Some(PieceKind::Pawn),
+            'K' => Some(King),
+            'Q' => Some(Queen),
+            'B' => Some(Bishop),
+            'N' => Some(Knight),
+            'R' => Some(Rook),
+            'P' => Some(Pawn),
             _ => None,
         }
     }
 
     fn char(&self) -> char {
         match *self {
-            PieceKind::King => 'K',
-            PieceKind::Queen => 'Q',
-            PieceKind::Bishop => 'B',
-            PieceKind::Knight => 'N',
-            PieceKind::Rook => 'R',
-            PieceKind::Pawn => 'P',
+            King => 'K',
+            Queen => 'Q',
+            Bishop => 'B',
+            Knight => 'N',
+            Rook => 'R',
+            Pawn => 'P',
         }
     }
 
     fn value(&self) -> usize {
         match *self {
-            PieceKind::Queen => 9,
-            PieceKind::Rook => 5,
-            PieceKind::Bishop => 3,
-            PieceKind::Knight => 3,
-            PieceKind::Pawn => 1,
+            Queen => 9,
+            Rook => 5,
+            Bishop => 3,
+            Knight => 3,
+            Pawn => 1,
             _ => 0,
         }
     }
@@ -74,23 +74,16 @@ pub enum Color {
 impl Color {
     fn from_char(c: char) -> Option<Color> {
         match c {
-            'B' => Some(Color::Black),
-            'W' => Some(Color::White),
+            'B' => Some(Black),
+            'W' => Some(White),
             _ => None,
         }
     }
 
     fn char(&self) -> char {
         match *self {
-            Color::Black => 'B',
-            Color::White => 'W',
-        }
-    }
-
-    fn get_other(&self) -> Color {
-        match *self {
-            Color::Black => Color::White,
-            Color::White => Color::Black,
+            Black => 'B',
+            White => 'W',
         }
     }
 }
@@ -171,7 +164,7 @@ where
 
 pub struct Game {
     /// ID of the game in the [crate::game_manager::GameManager] (if the game belongs to a
-    /// GameManager]).
+    /// [GameManager]).
     id: Option<String>,
 
     /// 8x8 grid of pieces. Rank (1-8) then file (A-H).
@@ -250,9 +243,9 @@ impl Game {
 
     pub fn get_tile_color(rank: usize, file: usize) -> Color {
         if (rank % 2) == (file % 2) {
-            Color::White
+            White
         } else {
-            Color::Black
+            Black
         }
     }
 
@@ -271,7 +264,7 @@ impl Game {
         }
 
         let mut piece = piece.unwrap();
-        let valid_moves = piece.get_valid_moves(&self, position);
+        let valid_moves = piece.get_valid_moves(self, position);
         if !valid_moves.contains(new_position) {
             return Err(MoveError::IllegalMoveError);
         }
@@ -365,7 +358,7 @@ mod test {
                     );
 
                     // Check that the queen is on her own color.
-                    if piece.kind == PieceKind::Queen {
+                    if piece.kind == Queen {
                         queen_count += 1;
                         assert_eq!(piece.color, Game::get_tile_color(rank, file));
                     }
