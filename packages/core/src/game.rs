@@ -44,7 +44,7 @@ impl PieceKind {
         }
     }
 
-    fn value(&self) -> usize {
+    fn material_value(&self) -> usize {
         match *self {
             Queen => 9,
             Rook => 5,
@@ -340,10 +340,15 @@ impl Game {
 #[cfg(test)]
 mod test {
     use crate::game::Color::{Black, White};
-    use crate::game::Game;
+    use crate::game::{Game, PieceKind};
     use crate::game::PieceKind::{King, Pawn, Queen};
     use crate::moves::Position;
     use std::str::FromStr;
+
+    #[test]
+    fn check_bishop_value() {
+        assert_eq!(3, PieceKind::Bishop.material_value())
+    }
 
     #[test]
     fn check_starting_board() {

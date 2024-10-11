@@ -175,6 +175,38 @@ impl Piece {
         }
     }
 
+
+    fn check_position_for_pawn_take(
+        moves: &mut HashSet<Position>,
+        board: &GameBoard,
+        color: Color,
+        current_position: &Position,
+        rank_delta: isize,
+        file_delta: isize,
+    ) {
+        let (rank, file) = (current_position.rank, current_position.file);
+
+        let new_rank = (rank as isize) + rank_delta;
+        let new_file = (file as isize) + file_delta;
+
+        if !(0..8).contains(&new_rank) {
+            return;
+        }
+
+        if !(0..8).contains(&new_file) {
+            return;
+        }
+
+        let rank = new_rank as usize;
+        let file = new_file as usize;
+
+        let piece_at_position = board[rank][file];
+
+        if piece_at_position.is_some() && piece_at_position.unwrap().color != color {
+            moves.insert(Position { rank, file });
+        }
+    }
+
     fn explore_king(&self, current_position: &Position, board: &GameBoard) -> HashSet<Position> {
         let mut moves: HashSet<Position> = HashSet::new();
 
@@ -222,13 +254,10 @@ impl Piece {
     }
 
     fn explore_pawn(&self, current_position: &Position, board: &GameBoard) -> HashSet<Position> {
+        let _starting_rank: usize = if self.color == Color::White { 6 } else { 1 };
+        let direction: isize = if self.color == Color::White { -1 } else { 1 };
+
         let mut moves: HashSet<Position> = HashSet::new();
-
-        let direction: isize = match self.color {
-            Color::White => -1,
-            Color::Black => 1,
-        };
-
         Self::check_position(
             &mut moves,
             board,
@@ -237,6 +266,16 @@ impl Piece {
             direction,
             0,
         );
+
+        // remove a move to take the opponent opposite
+        let ahead = Position { rank: (current_position.rank as isize + direction) as usize, file: current_position.file };
+        if moves.contains(&ahead) && Game::get_piece(board, &ahead).is_some() {
+            moves.remove(&ahead);
+        }
+
+        // taking
+        Self::check_position_for_pawn_take(&mut moves, board, self.color, current_position, direction, 1);
+        Self::check_position_for_pawn_take(&mut moves, board, self.color, current_position, direction, -1);
 
         // Optional double move for first move
         if self.move_count == 0 {
@@ -338,14 +377,15 @@ impl Piece {
     ) -> HashSet<Position> {
         // Explore down
         let mut valid_moves: HashSet<Position> = Piece::explore_file(
-            current_position.rank,
+            current_position.file,
             current_position.rank + 1..8,
             self.color,
             board,
         );
-        valid_moves.extend(Piece::explore_rank(
-            current_position.rank,
-            (0..current_position.file).rev(),
+        // Explore up
+        valid_moves.extend(Piece::explore_file(
+            current_position.file,
+            (0..current_position.rank).rev(),
             self.color,
             board,
         ));
@@ -497,12 +537,12 @@ mod test {
     fn pawn_moves_test() {
         let game = Game::new();
 
-        let position = Position { rank: 6, file: 3 };
-        let new_position = Position { rank: 5, file: 3 };
-
+        let position = Position::from_str("D2").unwrap();
         let pawn = game.get_piece_by_position(&position).unwrap();
         let moves = pawn.get_valid_moves(&game, &position);
-        assert_eq!(moves.len(), 2);
+        assert_eq!(2, moves.len());
+
+        let new_position = Position::from_str("D4").unwrap();
 
         game.move_piece_at_position(&position, &new_position)
             .expect("pawn move failed");
