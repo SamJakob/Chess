@@ -245,7 +245,7 @@ impl Game {
 }
 
 #[cfg(test)]
-mod tests {
+mod test {
     use crate::game::{Game, PieceKind};
 
     #[test]

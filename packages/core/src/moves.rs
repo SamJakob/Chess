@@ -385,30 +385,10 @@ impl Piece {
     }
 }
 
+#[cfg(test)]
 mod test {
     use crate::game::Game;
     use crate::moves::Position;
-
-    // #[test]
-    // fn king_moves_test() {
-    //     let king_piece: Piece = Piece { kind: crate::game::PieceKind::King, color: Color::White, move_count: 0 };
-    //     let current_position: Position = Position { rank: 3, file: 3 };
-    //
-    //     let board: GameBoard = [
-    //         [p!("BR"), p!("BN"), p!("BB"), p!("BQ"), p!("BK"), p!("BB"), p!("BN"), p!("BR")],
-    //         [p!("BP"), p!("BP"), p!("BP"), p!("BP"), p!("BP"), p!("BP"), p!("BP"), p!("BP")],
-    //         [None; 8],
-    //         [None; 8],
-    //         [None; 8],
-    //         [None; 8],
-    //         [p!("WP"), p!("WP"), p!("WP"), p!("WP"), p!("WP"), p!("WP"), p!("WP"), p!("WP")],
-    //         [p!("WR"), p!("WN"), p!("WB"), p!("WQ"), p!("WK"), p!("WB"), p!("WN"), p!("WR")],
-    //     ];
-    //
-    //     let moves = king_piece.get_valid_moves(current_position, board);
-    //
-    //     assert_eq!(moves.len(), 8);
-    // }
 
     #[test]
     fn king_moves_test() {
