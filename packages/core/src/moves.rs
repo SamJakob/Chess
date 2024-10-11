@@ -1,8 +1,9 @@
 use crate::game::{Color, Game, GameBoard, Piece, PieceKind};
 use serde::de::{SeqAccess, Visitor};
 use serde::{de, Deserialize, Deserializer};
-use std::fmt::Formatter;
+use std::fmt::{Display, Formatter};
 use std::hash::Hasher;
+use std::str::FromStr;
 use std::{cmp::min, collections::HashSet, hash::Hash};
 
 #[derive(Eq, Clone, Copy)]
@@ -42,41 +43,55 @@ impl Position {
         Position { rank, file }
     }
 
-    pub fn to_string(&self) -> String {
-        let col = char::from(self.file as u8 + 'A' as u8);
-        let row = 8 - self.rank;
-
-        return format!("{}{}", col, row);
-    }
-
-    pub fn from_string(pos: String) -> Option<Position> {
-        // Convert position string (e.g., "B2") to x and y indices
-        let col: usize = pos.chars().next().unwrap().to_ascii_lowercase() as usize;
-
-        if col > ('h' as usize) {
-            return None; //panic!("Position out of bounds");
-        }
-
-        let col_value = col - 'a' as usize; // 0-indexed
-        let row: usize = pos.chars().nth(1).unwrap().to_digit(10).unwrap() as usize; // 0-indexed
-
-        if row > 8 {
-            return None; //panic!("Position out of bounds");
-        }
-
-        let row_value = 8 - row;
-
-        Some(Position {
-            rank: row_value,
-            file: col_value,
-        })
-    }
-
     pub fn transition(&self, rank: i8, file: i8) -> Position {
         Position::new(
             (self.rank as i8 + rank) as usize,
             (self.file as i8 - file) as usize,
         )
+    }
+}
+
+impl Display for Position {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let col = char::from(self.file as u8 + b'A');
+        let row = 8 - self.rank;
+        write!(f, "{}{}", col, row)
+    }
+}
+
+#[derive(Debug, PartialEq)]
+pub struct PositionParseErr;
+
+impl Display for PositionParseErr {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "failed to parse position")
+    }
+}
+
+impl FromStr for Position {
+    type Err = PositionParseErr;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        // Convert position string (e.g., "B2") to x and y indices
+        let col: usize = s.chars().next().unwrap().to_ascii_lowercase() as usize;
+
+        if col > ('h' as usize) {
+            return Err(PositionParseErr);
+        }
+
+        let col_value = col - 'a' as usize; // 0-indexed
+        let row: usize = s.chars().nth(1).unwrap().to_digit(10).unwrap() as usize; // 0-indexed
+
+        if row > 8 {
+            return Err(PositionParseErr);
+        }
+
+        let row_value = 8 - row;
+
+        Ok(Position {
+            rank: row_value,
+            file: col_value,
+        })
     }
 }
 
@@ -116,11 +131,9 @@ impl<'de> Deserialize<'de> for Position {
 }
 
 impl Piece {
-    pub fn get_valid_moves(
-        &self,
-        current_position: &Position,
-        board: &GameBoard,
-    ) -> HashSet<Position> {
+    pub fn get_valid_moves(&self, game: &Game, current_position: &Position) -> HashSet<Position> {
+        let board = &game.board.lock().unwrap();
+
         match self.kind {
             PieceKind::King => self.explore_king(current_position, board),
             PieceKind::Queen => self.explore_queen(current_position, board),
@@ -426,21 +439,24 @@ impl Piece {
 mod test {
     use crate::game::{Color, Game, Piece};
     use crate::moves::Position;
-    use std::sync::Mutex;
+    use std::str::FromStr;
 
     #[test]
     fn bishop_moves_test() {
         let game = Game::new();
-        let mut board = game.board.lock().unwrap();
 
         let bishop_position_original = Position { rank: 7, file: 2 };
         let bishop = game
-            .get_piece_by_position(&board, &bishop_position_original)
+            .get_piece_by_position(&bishop_position_original)
             .unwrap();
-        board[bishop_position_original.rank][bishop_position_original.file] = None;
 
-        let bishop_position = Position::from_string("C2".to_string()).unwrap();
-        board[bishop_position.rank][bishop_position.file] = Some(bishop);
+        let bishop_position = Position::from_str("C2").unwrap();
+        {
+            let mut board = game.board.lock().unwrap();
+            board[bishop_position_original.rank][bishop_position_original.file] = None;
+
+            board[bishop_position.rank][bishop_position.file] = Some(bishop);
+        }
 
         let bishop = Piece {
             kind: crate::game::PieceKind::Bishop,
@@ -448,63 +464,54 @@ mod test {
             move_count: 0,
         };
 
-        let moves = bishop.get_valid_moves(&bishop_position, &board);
+        let moves = bishop.get_valid_moves(&game, &bishop_position);
         assert_eq!(moves.len(), 6);
     }
 
     #[test]
     fn king_moves_test() {
         let game = Game::new();
-        let board = game.board.lock().unwrap();
 
         let position = Position { rank: 0, file: 4 };
-        let king = game.get_piece_by_position(&board, &position).unwrap();
+        let king = game.get_piece_by_position(&position).unwrap();
 
-        let moves = king.get_valid_moves(&position, &board);
+        let moves = king.get_valid_moves(&game, &position);
         assert_eq!(moves.len(), 0);
     }
 
     #[test]
     fn king_moves_test_2() {
         let game = Game::new();
-        let mut board = game.board.lock().unwrap();
 
         let position = Position { rank: 0, file: 4 };
-        let king = game.get_piece_by_position(&board, &position).unwrap();
+        let king = game.get_piece_by_position(&position).unwrap();
 
-        board[position.rank][position.file] = None;
-        board[position.rank + 3][position.file] = Some(king);
+        {
+            let mut board = game.board.lock().unwrap();
+            board[position.rank][position.file] = None;
+            board[position.rank + 3][position.file] = Some(king);
+        }
 
-        let moves = king.get_valid_moves(&Position { rank: 3, file: 4 }, &board);
+        let moves = king.get_valid_moves(&game, &Position { rank: 3, file: 4 });
         assert_eq!(moves.len(), 8);
     }
 
     #[test]
     fn pawn_moves_test() {
-        let game = Mutex::new(Game::new());
-        let game_ref = game.lock().unwrap();
-        let board = game_ref.board.lock().unwrap();
+        let game = Game::new();
 
         let position = Position { rank: 6, file: 3 };
-        let pawn = game
-            .lock()
-            .unwrap()
-            .get_piece_by_position(&board, &position)
-            .unwrap();
-        let moves = pawn.get_valid_moves(&position, &board);
+        let new_position = Position { rank: 5, file: 3 };
+
+        let pawn = game.get_piece_by_position(&position).unwrap();
+        let moves = pawn.get_valid_moves(&game, &position);
         assert_eq!(moves.len(), 2);
 
-        let new_position = Position { rank: 5, file: 3 };
-        game.lock()
-            .unwrap()
-            .move_piece_at_position(&position, &new_position)
+        game.move_piece_at_position(&position, &new_position)
             .expect("pawn move failed");
-        let pawn = game
-            .lock()
-            .unwrap()
-            .get_piece_by_position(&board, &new_position)
-            .unwrap();
-        let moves = pawn.get_valid_moves(&new_position, &board);
+
+        let pawn = game.get_piece_by_position(&new_position).unwrap();
+        let moves = pawn.get_valid_moves(&game, &new_position);
         assert_eq!(moves.len(), 1);
     }
 }

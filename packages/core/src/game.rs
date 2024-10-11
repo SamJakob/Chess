@@ -221,29 +221,29 @@ impl Game {
         }
     }
 
-    pub fn get_piece_by_position(&self, board: &GameBoard, position: &Position) -> Option<Piece> {
-        board[position.rank][position.file]
+    pub fn get_piece_by_position(&self, position: &Position) -> Option<Piece> {
+        self.board.lock().unwrap()[position.rank][position.file]
     }
 
     pub fn move_piece_at_position(
-        &mut self,
+        &self,
         position: &Position,
         new_position: &Position,
     ) -> Result<(), MoveError> {
-        let mut board = self.board.lock().unwrap();
-
-        let piece = self.get_piece_by_position(&board, position);
+        let piece = self.get_piece_by_position(position);
         if piece.is_none() {
             return Err(MoveError::PieceNotFoundError);
         }
 
         let mut piece = piece.unwrap();
-        let valid_moves = piece.get_valid_moves(position, &self.board.lock().unwrap());
+        let valid_moves = piece.get_valid_moves(&self, position);
         if !valid_moves.contains(new_position) {
             return Err(MoveError::IllegalMoveError);
         }
 
         piece.move_count += 1;
+
+        let mut board = self.board.lock().unwrap();
         board[position.rank][position.file] = None;
         board[new_position.rank][new_position.file] = Some(piece);
         Ok(())
@@ -254,24 +254,22 @@ impl Game {
     }
 
     pub fn is_player_in_check(&self, color: Color) -> bool {
-        let other_player = color.get_other();
-        let board = self.board.lock().unwrap();
-
-        for (rank, files) in board.iter().enumerate() {
-            for (file, piece) in files.iter().enumerate() {
+        for rank in 0..8 {
+            for file in 0..8 {
+                let position = &Position { rank, file };
+                let piece = self.get_piece_by_position(position);
                 if piece.is_none() {
                     continue;
                 }
 
                 let piece = piece.unwrap();
-
-                let moves = piece.get_valid_moves(&Position { rank, file }, &board);
+                let moves = piece.get_valid_moves(self, position);
                 if moves.is_empty() {
                     continue;
                 }
 
                 for position in moves {
-                    let target = self.get_piece_by_position(&board, &position);
+                    let target = self.get_piece_by_position(&position);
                     if target.is_none() {
                         continue;
                     }
@@ -290,7 +288,11 @@ impl Game {
 
 #[cfg(test)]
 mod test {
-    use crate::game::{Color, Game, PieceKind};
+    use crate::game::Color::{Black, White};
+    use crate::game::PieceKind::{King, Queen};
+    use crate::game::{Game, PieceKind};
+    use crate::moves::Position;
+    use std::str::FromStr;
 
     #[test]
     fn check_starting_board() {
@@ -340,7 +342,37 @@ mod test {
     #[test]
     fn test_is_king_in_check() {
         let game = Game::new();
-        assert!(!game.is_player_in_check(Color::White));
-        assert!(!game.is_player_in_check(Color::Black));
+        assert!(!game.is_player_in_check(White));
+        assert!(!game.is_player_in_check(Black));
+
+        let white_queen_position_original = Position::from_str("D1").unwrap();
+        let black_king_position_original = Position::from_str("E8").unwrap();
+
+        let white_queen_position = Position::from_str("D5").unwrap();
+        let black_king_position = Position::from_str("E5").unwrap();
+
+        // Obtain the white_queen and black_king.
+        let white_queen = game
+            .get_piece_by_position(&white_queen_position_original)
+            .unwrap();
+        let black_king = game
+            .get_piece_by_position(&black_king_position_original)
+            .unwrap();
+        assert_eq!(white_queen.kind, Queen);
+        assert_eq!(white_queen.color, White);
+        assert_eq!(black_king.kind, King);
+        assert_eq!(black_king.color, Black);
+
+        {
+            // Move the white queen and the black king next to each other in the middle of the board.
+            let mut board = game.board.lock().unwrap();
+            board[white_queen_position_original.rank][white_queen_position_original.file] = None;
+            board[black_king_position_original.rank][black_king_position_original.file] = None;
+            board[white_queen_position.rank][white_queen_position.file] = Some(white_queen);
+            board[black_king_position.rank][black_king_position.file] = Some(black_king);
+        }
+
+        assert!(!game.is_player_in_check(White));
+        assert!(game.is_player_in_check(Black));
     }
 }
