@@ -239,7 +239,7 @@ impl Game {
         Ok(())
     }
 
-    pub fn get_piece(board: GameBoard, position: Position) -> Option<Piece> {
+    pub fn get_piece(board: &GameBoard, position: &Position) -> Option<Piece> {
         board[position.rank][position.file]
     }
 }

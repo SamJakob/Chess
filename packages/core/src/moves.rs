@@ -1,7 +1,6 @@
 use crate::game::{Color, Game, GameBoard, Piece, PieceKind};
 use serde::de::{SeqAccess, Visitor};
 use serde::{de, Deserialize, Deserializer};
-use serde_json::map::Iter;
 use std::fmt::Formatter;
 use std::hash::Hasher;
 use std::{cmp::min, collections::HashSet, hash::Hash};
@@ -219,24 +218,24 @@ impl Piece {
 
         // Unoccupied or can take
         if piece_at_position.is_none() {
-            return (false, Some(position));
+            return (false, Some(*position));
         }
         if piece_at_position.unwrap().color != color {
-            return (true, Some(position));
+            return (true, Some(*position));
         }
         // square is occupied so stop exploring
         (true, None)
     }
 
-    fn explore_rank<I>(rank: usize, files: I, color: Color, board: GameBoard) -> HashSet<Position>
+    fn explore_rank<I>(rank: usize, files: I, color: Color, board: &GameBoard) -> HashSet<Position>
     where
         I: IntoIterator<Item = usize>,
     {
         let mut valid_moves: HashSet<Position> = HashSet::new();
         for new_col in files {
             let (break_out, valid_move) = Piece::explore_pos_and_break(
-                Position {
-                    rank: rank,
+                &Position {
+                    rank,
                     file: new_col,
                 },
                 color,
@@ -258,14 +257,8 @@ impl Piece {
     {
         let mut valid_moves: HashSet<Position> = HashSet::new();
         for rank in ranks {
-            let (break_out, valid_move) = Piece::explore_pos_and_break(
-                Position {
-                    rank: rank,
-                    file: file,
-                },
-                color,
-                board,
-            );
+            let (break_out, valid_move) =
+                Piece::explore_pos_and_break(&Position { rank, file }, color, board);
             if valid_move.is_some() {
                 valid_moves.insert(valid_move.unwrap());
             }
@@ -276,7 +269,7 @@ impl Piece {
         valid_moves
     }
 
-    fn look_sideways(&self, current_position: Position, board: GameBoard) -> HashSet<Position> {
+    fn look_sideways(&self, current_position: &Position, board: &GameBoard) -> HashSet<Position> {
         let mut valid_moves: HashSet<Position> = Piece::explore_rank(
             current_position.rank,
             (0..current_position.file).rev(),
@@ -292,7 +285,11 @@ impl Piece {
         valid_moves
     }
 
-    fn look_up_and_down(&self, current_position: Position, board: GameBoard) -> HashSet<Position> {
+    fn look_up_and_down(
+        &self,
+        current_position: &Position,
+        board: &GameBoard,
+    ) -> HashSet<Position> {
         // Explore down
         let mut valid_moves: HashSet<Position> = Piece::explore_file(
             current_position.rank,
@@ -315,7 +312,7 @@ impl Piece {
         // Explore to top left
         for dev in 1..min(current_position.file, current_position.rank) {
             let (break_out, valid_move) = Piece::explore_pos_and_break(
-                Position {
+                &Position {
                     rank: current_position.rank - dev,
                     file: current_position.file - dev,
                 },
@@ -333,7 +330,7 @@ impl Piece {
         // Explore to bottom left
         for dev in 1..min(current_position.file, current_position.rank) {
             let (break_out, valid_move) = Piece::explore_pos_and_break(
-                Position {
+                &Position {
                     rank: current_position.rank + dev,
                     file: current_position.file - dev,
                 },
@@ -351,7 +348,7 @@ impl Piece {
         // Explore to top right
         for dev in 1..min(current_position.file, current_position.rank) {
             let (break_out, valid_move) = Piece::explore_pos_and_break(
-                Position {
+                &Position {
                     rank: current_position.rank - dev,
                     file: current_position.file + dev,
                 },
@@ -369,7 +366,7 @@ impl Piece {
         // Explore to bottom right
         for dev in 1..min(current_position.file, current_position.rank) {
             let (break_out, valid_move) = Piece::explore_pos_and_break(
-                Position {
+                &Position {
                     rank: current_position.rank + dev,
                     file: current_position.file + dev,
                 },
