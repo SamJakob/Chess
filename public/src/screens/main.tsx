@@ -30,6 +30,7 @@ export function MainScreen() {
 					Duration: {dayjs.duration(offset).format('HH:mm:ss')} (Total Moves: {game.moves_count})
 				</p>
 				<p>Game ID: {game.id}</p>
+				<p>Current Move: {game.current_move}</p>
 				<p>
 					In check? White: {game.is_player_in_check.W ? 'Yes' : 'No'}, Black:{' '}
 					{game.is_player_in_check.B ? 'Yes' : 'No'}

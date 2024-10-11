@@ -1,6 +1,8 @@
 import { Color, Kind } from '../components/piece.tsx';
 import axios from 'axios';
 
+export type Player = 'W' | 'B';
+
 export interface Piece {
 	kind: Kind;
 	color: Color;
@@ -24,21 +26,19 @@ export interface Game {
 	created_at: number;
 
 	/**
+	 * The current player to move.
+	 */
+	current_move: Player;
+
+	/**
 	 * The total number of moves that have been made in the game.
 	 */
 	moves_count: number;
 
-	is_player_in_check: {
-		/**
-		 * Whether the white player is in check.
-		 */
-		W: boolean;
-
-		/**
-		 * Whether the black player is in check.
-		 */
-		B: boolean;
-	};
+	/**
+	 * A map from player color (i.e., 'W' or 'B') to a boolean indicating whether they are currently in check.
+	 */
+	is_player_in_check: Record<Player, boolean>;
 }
 
 export async function createGame() {

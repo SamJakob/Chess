@@ -191,18 +191,23 @@ impl Serialize for Game {
             created_at: &'a DateTime<Utc>,
             is_player_in_check: &'a BTreeMap<Color, bool>,
             moves_count: usize,
+            current_move: Color,
         }
 
         let mut is_player_in_check = BTreeMap::new();
         is_player_in_check.insert(White, self.is_player_in_check(White));
         is_player_in_check.insert(Black, self.is_player_in_check(Black));
 
+        let moves_count = self.get_move_count();
+        let current_move = self.get_current_move();
+
         let game = Game {
             id: &self.id,
             board: &self.board,
             created_at: &self.created_at,
             is_player_in_check: &is_player_in_check,
-            moves_count: self.moves.lock().unwrap().len(),
+            moves_count,
+            current_move,
         };
 
         game.serialize(serializer)
@@ -264,6 +269,10 @@ impl Game {
         }
 
         let mut piece = piece.unwrap();
+        if piece.color != self.get_current_move() {
+            return Err(MoveError::OutOfTurnError);
+        }
+
         let valid_moves = piece.get_valid_moves(self, position);
         if !valid_moves.contains(new_position) {
             return Err(MoveError::IllegalMoveError);
@@ -313,6 +322,18 @@ impl Game {
         }
 
         false
+    }
+
+    pub fn get_move_count(&self) -> usize {
+        self.moves.lock().unwrap().len()
+    }
+
+    pub fn get_current_move(&self) -> Color {
+        if self.get_move_count() % 2 == 0 {
+            White
+        } else {
+            Black
+        }
     }
 }
 
