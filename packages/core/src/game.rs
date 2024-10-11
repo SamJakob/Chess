@@ -85,6 +85,7 @@ impl Color {
     }
 }
 
+<<<<<<< Updated upstream
 impl Serialize for Color {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -95,15 +96,68 @@ impl Serialize for Color {
 }
 
 #[derive(Copy, Clone, Debug, Serialize)]
+=======
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
+struct Position {
+    row: u8,
+    col: u8,
+}
+
+impl Position {
+    pub fn new(row: u8, col: u8) -> Option<Position> {
+        if row > 7 || col > 7 {
+            return None; //panic!("Position out of bounds");
+        }
+        Some(Position { row, col })
+    }
+
+    pub fn to_string(&self) -> String {
+        let col = char::from(self.col + 'A' as u8);
+        let row = 8 - self.row;
+
+        return format!("{}{}", col, row);
+    }
+
+    pub fn from_string(pos: String) -> Option<Position> {
+        // Convert position string (e.g., "B2") to x and y indices
+        let col: u8 = pos.chars().next().unwrap().to_ascii_lowercase() as u8;
+
+        if col > ('h' as u8) {
+            return None; //panic!("Position out of bounds");
+        }
+
+        let col_value = col - 'a' as u8; // 0-indexed
+        let row: u8 = pos.chars().nth(1).unwrap().to_digit(10).unwrap() as u8; // 0-indexed
+
+        if row > 8 {
+            return None; //panic!("Position out of bounds");
+        }
+
+        let row_value = 8 - row;
+
+        Some(Position {
+            row: row_value,
+            col: col_value,
+        })
+    }
+
+    pub fn transition(&self, row: i8, col: i8) -> Option<Position> {
+        Position::new((self.row as i8 + row) as u8, (self.col as i8 - col) as u8)
+    }
+}
+
+
+#[derive(Copy, Clone, Debug)]
+>>>>>>> Stashed changes
 pub struct Piece {
     /// The kind of piece. This also indicates its value.
-    kind: PieceKind,
+    pub kind: PieceKind,
 
     /// The color (owner) of the piece.
-    color: Color,
+    pub color: Color,
 
     /// The number of moves that the Piece has made.
-    move_count: usize,
+    pub move_count: usize,
 }
 
 impl Display for Piece {
@@ -227,6 +281,28 @@ impl Game {
     }
 }
 
+impl GameBoard {
+    pub fn get_piece(&self, pos: &Position) -> Option<Piece> {
+        // Convert position string (e.g., "B2") to x and y indices
+        let col: u8 = pos.chars().next().unwrap().to_ascii_lowercase() as u8;
+
+        if col > ('h' as u8) {
+            return None; //panic!("Position out of bounds");
+        }
+
+        let col_value = col - 'a' as u8; // 0-indexed
+        let row: u8 = pos.chars().nth(1).unwrap().to_digit(10).unwrap() as u8; // 0-indexed
+
+        if row > 8 {
+            return None; //panic!("Position out of bounds");
+        }
+
+        let row_value = 8 - row;
+
+        (*self)[(*pos).row as usize][col_value as usize]
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::game::{Game, PieceKind};
@@ -259,7 +335,7 @@ mod tests {
                     });
 
                     // Check that the queen is on her own color.
-                    if (piece.kind == PieceKind::Queen) {
+                    if piece.kind == PieceKind::Queen {
                         queen_count += 1;
                         assert_eq!(piece.color, Game::get_tile_color(rank, file));
                     }
