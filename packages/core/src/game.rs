@@ -1,4 +1,5 @@
 use crate::error::MoveError;
+use crate::game::PieceKind::King;
 use crate::moves::Position;
 use chrono::serde::ts_milliseconds;
 use chrono::{DateTime, Utc};
@@ -81,6 +82,13 @@ impl Color {
         match *self {
             Color::Black => 'B',
             Color::White => 'W',
+        }
+    }
+
+    fn get_other(&self) -> Color {
+        match *self {
+            Color::Black => Color::White,
+            Color::White => Color::Black,
         }
     }
 }
@@ -213,8 +221,8 @@ impl Game {
         }
     }
 
-    pub fn get_piece_by_position(&self, position: &Position) -> Option<Piece> {
-        self.board.lock().unwrap()[position.rank][position.file]
+    pub fn get_piece_by_position(&self, board: &GameBoard, position: &Position) -> Option<Piece> {
+        board[position.rank][position.file]
     }
 
     pub fn move_piece_at_position(
@@ -222,7 +230,9 @@ impl Game {
         position: &Position,
         new_position: &Position,
     ) -> Result<(), MoveError> {
-        let piece = self.get_piece_by_position(position);
+        let mut board = self.board.lock().unwrap();
+
+        let piece = self.get_piece_by_position(&board, position);
         if piece.is_none() {
             return Err(MoveError::PieceNotFoundError);
         }
@@ -234,19 +244,53 @@ impl Game {
         }
 
         piece.move_count += 1;
-        self.board.lock().unwrap()[position.rank][position.file] = None;
-        self.board.lock().unwrap()[new_position.rank][new_position.file] = Some(piece);
+        board[position.rank][position.file] = None;
+        board[new_position.rank][new_position.file] = Some(piece);
         Ok(())
     }
 
     pub fn get_piece(board: &GameBoard, position: &Position) -> Option<Piece> {
         board[position.rank][position.file]
     }
+
+    pub fn is_player_in_check(&self, color: Color) -> bool {
+        let other_player = color.get_other();
+        let board = self.board.lock().unwrap();
+
+        for (rank, files) in board.iter().enumerate() {
+            for (file, piece) in files.iter().enumerate() {
+                if piece.is_none() {
+                    continue;
+                }
+
+                let piece = piece.unwrap();
+
+                let moves = piece.get_valid_moves(&Position { rank, file }, &board);
+                if moves.is_empty() {
+                    continue;
+                }
+
+                for position in moves {
+                    let target = self.get_piece_by_position(&board, &position);
+                    if target.is_none() {
+                        continue;
+                    }
+
+                    let target = target.unwrap();
+                    if target.color == color && target.kind == King {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        false
+    }
 }
 
 #[cfg(test)]
 mod test {
-    use crate::game::{Game, PieceKind};
+    use crate::game::{Color, Game, PieceKind};
 
     #[test]
     fn check_starting_board() {
@@ -291,5 +335,12 @@ mod test {
         }
 
         assert_eq!(queen_count, 2);
+    }
+
+    #[test]
+    fn test_is_king_in_check() {
+        let game = Game::new();
+        assert!(!game.is_player_in_check(Color::White));
+        assert!(!game.is_player_in_check(Color::Black));
     }
 }

@@ -389,26 +389,28 @@ impl Piece {
 mod test {
     use crate::game::Game;
     use crate::moves::Position;
+    use std::sync::Mutex;
 
     #[test]
     fn king_moves_test() {
         let game = Game::new();
+        let board = game.board.lock().unwrap();
 
         let position = Position { rank: 0, file: 4 };
-        let king = game.get_piece_by_position(&position).unwrap();
+        let king = game.get_piece_by_position(&board, &position).unwrap();
 
-        let moves = king.get_valid_moves(&position, &game.board.lock().unwrap());
+        let moves = king.get_valid_moves(&position, &board);
         assert_eq!(moves.len(), 0);
     }
 
     #[test]
     fn king_moves_test_2() {
         let game = Game::new();
+        let mut board = game.board.lock().unwrap();
 
         let position = Position { rank: 0, file: 4 };
-        let king = game.get_piece_by_position(&position).unwrap();
+        let king = game.get_piece_by_position(&board, &position).unwrap();
 
-        let mut board = game.board.lock().unwrap();
         board[position.rank][position.file] = None;
         board[position.rank + 3][position.file] = Some(king);
 
@@ -418,18 +420,30 @@ mod test {
 
     #[test]
     fn pawn_moves_test() {
-        let mut game = Game::new();
+        let game = Mutex::new(Game::new());
+        let game_ref = game.lock().unwrap();
+        let board = game_ref.board.lock().unwrap();
 
         let position = Position { rank: 6, file: 3 };
-        let pawn = game.get_piece_by_position(&position).unwrap();
-        let moves = pawn.get_valid_moves(&position, &game.board.lock().unwrap());
+        let pawn = game
+            .lock()
+            .unwrap()
+            .get_piece_by_position(&board, &position)
+            .unwrap();
+        let moves = pawn.get_valid_moves(&position, &board);
         assert_eq!(moves.len(), 2);
 
         let new_position = Position { rank: 5, file: 3 };
-        game.move_piece_at_position(&position, &new_position)
+        game.lock()
+            .unwrap()
+            .move_piece_at_position(&position, &new_position)
             .expect("pawn move failed");
-        let pawn = game.get_piece_by_position(&new_position).unwrap();
-        let moves = pawn.get_valid_moves(&new_position, &game.board.lock().unwrap());
+        let pawn = game
+            .lock()
+            .unwrap()
+            .get_piece_by_position(&board, &new_position)
+            .unwrap();
+        let moves = pawn.get_valid_moves(&new_position, &board);
         assert_eq!(moves.len(), 1);
     }
 }
