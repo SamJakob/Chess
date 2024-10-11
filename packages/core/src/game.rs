@@ -93,13 +93,13 @@ impl Serialize for Color {
 #[derive(Copy, Clone, Debug, Serialize)]
 pub struct Piece {
     /// The kind of piece. This also indicates its value.
-    kind: PieceKind,
+    pub kind: PieceKind,
 
     /// The color (owner) of the piece.
-    color: Color,
+    pub color: Color,
 
     /// The number of moves that the Piece has made.
-    move_count: usize,
+    pub move_count: usize,
 }
 
 impl Display for Piece {
@@ -117,7 +117,7 @@ impl Piece {
         }
     }
 
-    fn new_from(notation: &'static str) -> Option<Piece> {
+    pub fn new_from(notation: &'static str) -> Option<Piece> {
         if notation.len() == 2 {
             let kind_notation = notation.as_bytes()[1] as char;
             let color_notation = notation.as_bytes()[0] as char;
