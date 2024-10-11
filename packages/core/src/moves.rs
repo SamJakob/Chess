@@ -14,6 +14,7 @@ use crate::game::{Color, GameBoard, Piece, PieceKind};
 use serde::de::{SeqAccess, Visitor};
 use serde::{de, Deserialize, Deserializer};
 use std::fmt::Formatter;
+use std::ops::RangeBounds;
 use std::{cmp::min, collections::HashSet, hash::Hash};
 
 #[derive(PartialEq, Eq, Hash, Clone, Copy)]
@@ -76,7 +77,7 @@ impl Piece {
     pub fn get_valid_moves(
         &self,
         current_position: Position,
-        board: GameBoard,
+        board: &GameBoard,
     ) -> HashSet<Position> {
         match self.kind {
             PieceKind::King => self.explore_king(current_position, board),
@@ -88,112 +89,76 @@ impl Piece {
         }
     }
 
-    fn explore_king(&self, current_position: Position, board: GameBoard) -> HashSet<Position> {
+    fn check_position(moves: &mut HashSet<Position>, board: &GameBoard, color: Color, current_position: Position, rank_delta: isize, file_delta: isize) {
+        let (rank, file) = (current_position.rank, current_position.file);
+
+        let new_rank = (rank as isize) + rank_delta;
+        let new_file = (file as isize) + file_delta;
+
+        if !(0..8).contains(&new_rank) {
+            return;
+        }
+
+        if !(0..8).contains(&new_file) {
+            return;
+        }
+
+        let rank = new_rank as usize;
+        let file = new_file as usize;
+
+        let piece_at_position = board[rank][file];
+        if piece_at_position.is_none() || piece_at_position.unwrap().color != color {
+            moves.insert(Position { rank, file });
+        }
+    }
+
+    fn explore_king(&self, current_position: Position, board: &GameBoard) -> HashSet<Position> {
         let mut moves: HashSet<Position> = HashSet::new();
-        let piece_at_position = board[current_position.rank - 1][current_position.file - 1];
-        if piece_at_position.is_none() || piece_at_position.unwrap().color != self.color {
-            moves.insert(Position { rank: current_position.rank - 1, file: current_position.file - 1 });
-        }
 
-        let piece_at_position = board[current_position.rank - 1][current_position.file];
-        if piece_at_position.is_none() || piece_at_position.unwrap().color != self.color {
-            moves.insert(Position { rank: current_position.rank - 1, file: current_position.file });
-        }
-
-        let piece_at_position = board[current_position.rank - 1][current_position.file + 1];
-        if piece_at_position.is_none() || piece_at_position.unwrap().color != self.color {
-            moves.insert(Position { rank: current_position.rank - 1, file: current_position.file + 1 });
-        }
-
-        let piece_at_position = board[current_position.rank][current_position.file - 1];
-        if piece_at_position.is_none() || piece_at_position.unwrap().color != self.color {
-            moves.insert(Position { rank: current_position.rank, file: current_position.file - 1 });
-        }
-
-        let piece_at_position = board[current_position.rank][current_position.file + 1];
-        if piece_at_position.is_none() || piece_at_position.unwrap().color != self.color {
-            moves.insert(Position { rank: current_position.rank, file: current_position.file + 1 });
-        }
-
-        let piece_at_position = board[current_position.rank + 1][current_position.file - 1];
-        if piece_at_position.is_none() || piece_at_position.unwrap().color != self.color {
-            moves.insert(Position { rank: current_position.rank + 1, file: current_position.file - 1 });
-        }
-
-        let piece_at_position = board[current_position.rank + 1][current_position.file];
-        if piece_at_position.is_none() || piece_at_position.unwrap().color != self.color {
-            moves.insert(Position { rank: current_position.rank + 1, file: current_position.file });
-        }
-
-        let piece_at_position = board[current_position.rank + 1][current_position.file + 1];
-        if piece_at_position.is_none() || piece_at_position.unwrap().color != self.color {
-            moves.insert(Position { rank: current_position.rank + 1, file: current_position.file + 1 });
-        }
+        Self::check_position(&mut moves, board, self.color, current_position, -1, -1);
+        Self::check_position(&mut moves, board, self.color, current_position, -1, 0);
+        Self::check_position(&mut moves, board, self.color, current_position, -1, 1);
+        Self::check_position(&mut moves, board, self.color, current_position, 0, -1);
+        Self::check_position(&mut moves, board, self.color, current_position, 0, 0);
+        Self::check_position(&mut moves, board, self.color, current_position, 0, 1);
+        Self::check_position(&mut moves, board, self.color, current_position, 1, -1);
+        Self::check_position(&mut moves, board, self.color, current_position, 1, 0);
+        Self::check_position(&mut moves, board, self.color, current_position, 1, 1);
 
         moves
     }
 
-    fn explore_queen(&self, current_position: Position, board: GameBoard) -> HashSet<Position> {
+    fn explore_queen(&self, current_position: Position, board: &GameBoard) -> HashSet<Position> {
         let mut moves = self.look_sideways(current_position, board);
         moves.extend(self.look_up_and_down(current_position, board));
         moves.extend(self.look_diagonal(current_position, board));
         moves
     }
 
-    fn explore_rook(&self, current_position: Position, board: GameBoard) -> HashSet<Position> {
+    fn explore_rook(&self, current_position: Position, board: &GameBoard) -> HashSet<Position> {
         let mut moves = self.look_sideways(current_position, board);
         moves.extend(self.look_up_and_down(current_position, board));
         moves
     }
 
-    fn explore_knight(&self, current_position: Position, board: GameBoard) -> HashSet<Position> {
+    fn explore_knight(&self, current_position: Position, board: &GameBoard) -> HashSet<Position> {
         let mut moves: HashSet<Position> = HashSet::new();
-        let piece_at_position = board[current_position.rank - 2][current_position.file - 1];
-        if piece_at_position.is_none() || piece_at_position.unwrap().color != self.color {
-            moves.insert(Position { rank: current_position.rank - 2, file: current_position.file - 1 });
-        }
 
-        let piece_at_position = board[current_position.rank - 2][current_position.file + 1];
-        if piece_at_position.is_none() || piece_at_position.unwrap().color != self.color {
-            moves.insert(Position { rank: current_position.rank - 2, file: current_position.file + 1 });
-        }
-
-        let piece_at_position = board[current_position.rank + 2][current_position.file - 1];
-        if piece_at_position.is_none() || piece_at_position.unwrap().color != self.color {
-            moves.insert(Position { rank: current_position.rank + 2, file: current_position.file - 1 });
-        }
-
-        let piece_at_position = board[current_position.rank + 2][current_position.file + 1];
-        if piece_at_position.is_none() || piece_at_position.unwrap().color != self.color {
-            moves.insert(Position { rank: current_position.rank + 2, file: current_position.file + 1 });
-        }
-
-        let piece_at_position = board[current_position.rank - 1][current_position.file - 2];
-        if piece_at_position.is_none() || piece_at_position.unwrap().color != self.color {
-            moves.insert(Position { rank: current_position.rank - 1, file: current_position.file - 2 });
-        }
-
-        let piece_at_position = board[current_position.rank - 1][current_position.file + 2];
-        if piece_at_position.is_none() || piece_at_position.unwrap().color != self.color {
-            moves.insert(Position { rank: current_position.rank - 1, file: current_position.file + 2 });
-        }
-
-        let piece_at_position = board[current_position.rank + 1][current_position.file - 2];
-        if piece_at_position.is_none() || piece_at_position.unwrap().color != self.color {
-            moves.insert(Position { rank: current_position.rank + 1, file: current_position.file - 2 });
-        }
-
-        let piece_at_position = board[current_position.rank + 1][current_position.file + 2];
-        if piece_at_position.is_none() || piece_at_position.unwrap().color != self.color {
-            moves.insert(Position { rank: current_position.rank + 1, file: current_position.file + 2 });
-        }
+        Self::check_position(&mut moves, board, self.color, current_position, -2, -1);
+        Self::check_position(&mut moves, board, self.color, current_position, -2, 1);
+        Self::check_position(&mut moves, board, self.color, current_position, 2, -1);
+        Self::check_position(&mut moves, board, self.color, current_position, 2, 1);
+        Self::check_position(&mut moves, board, self.color, current_position, -1, -2);
+        Self::check_position(&mut moves, board, self.color, current_position, -1, 2);
+        Self::check_position(&mut moves, board, self.color, current_position, 1, -2);
+        Self::check_position(&mut moves, board, self.color, current_position, 1, 2);
 
         // TODO: Castling???
 
         moves
     }
 
-    fn explore_pawn(&self, current_position: Position, board: GameBoard) -> HashSet<Position> {
+    fn explore_pawn(&self, current_position: Position, board: &GameBoard) -> HashSet<Position> {
         let mut moves: HashSet<Position> = HashSet::new();
 
         let starting_rank: u8 = match self.color {
@@ -201,24 +166,16 @@ impl Piece {
             Color::Black => 1
         };
 
-        let direction: i8 = match self.color {
+        let direction: isize = match self.color {
             Color::White => -1,
             Color::Black => 1
         };
 
-        let new_rank = ((current_position.rank as i8) + direction) as usize;
+        Self::check_position(&mut moves, board, self.color, current_position, direction, 0);
 
-        let piece_at_position = board[new_rank][current_position.file];
-        if piece_at_position.is_none() || piece_at_position.unwrap().color != self.color {
-            moves.insert(Position { rank: new_rank, file: current_position.file });
-        }
-
-        // Double move for first move
-        let new_rank1 = ((current_position.rank as i8) + (direction * 2)) as usize;
-
-        let piece_at_position1 = board[new_rank1][current_position.file];
-        if piece_at_position1.is_none() || piece_at_position1.unwrap().color != self.color {
-            moves.insert(Position { rank: new_rank1, file: current_position.file });
+        // Optional double move for first move
+        if (self.move_count == 0) {
+            Self::check_position(&mut moves, board, self.color, current_position, direction * 2, 0);
         }
 
         //TODO: en passant???
@@ -226,7 +183,7 @@ impl Piece {
         moves
     }
 
-    fn look_sideways(&self, current_position: Position, board: GameBoard) -> HashSet<Position> {
+    fn look_sideways(&self, current_position: Position, board: &GameBoard) -> HashSet<Position> {
         let mut valid_moves: HashSet<Position> = HashSet::new();
 
         // Explore left
@@ -273,7 +230,7 @@ impl Piece {
         valid_moves
     }
 
-    fn look_up_and_down(&self, current_position: Position, board: GameBoard) -> HashSet<Position> {
+    fn look_up_and_down(&self, current_position: Position, board: &GameBoard) -> HashSet<Position> {
         let mut valid_moves: HashSet<Position> = HashSet::new();
 
         // Explore down
@@ -320,7 +277,7 @@ impl Piece {
         valid_moves
     }
 
-    fn look_diagonal(&self, current_position: Position, board: GameBoard) -> HashSet<Position> {
+    fn look_diagonal(&self, current_position: Position, board: &GameBoard) -> HashSet<Position> {
         let mut valid_moves: HashSet<Position> = HashSet::new();
 
         // Explore to top left
@@ -412,47 +369,54 @@ impl Piece {
 }
 
 mod test {
-    use crate::{game::{Color, GameBoard, Piece}, moves::Position, p};
+    use crate::game::Game;
+    use crate::moves::Position;
+
+    // #[test]
+    // fn king_moves_test() {
+    //     let king_piece: Piece = Piece { kind: crate::game::PieceKind::King, color: Color::White, move_count: 0 };
+    //     let current_position: Position = Position { rank: 3, file: 3 };
+    //
+    //     let board: GameBoard = [
+    //         [p!("BR"), p!("BN"), p!("BB"), p!("BQ"), p!("BK"), p!("BB"), p!("BN"), p!("BR")],
+    //         [p!("BP"), p!("BP"), p!("BP"), p!("BP"), p!("BP"), p!("BP"), p!("BP"), p!("BP")],
+    //         [None; 8],
+    //         [None; 8],
+    //         [None; 8],
+    //         [None; 8],
+    //         [p!("WP"), p!("WP"), p!("WP"), p!("WP"), p!("WP"), p!("WP"), p!("WP"), p!("WP")],
+    //         [p!("WR"), p!("WN"), p!("WB"), p!("WQ"), p!("WK"), p!("WB"), p!("WN"), p!("WR")],
+    //     ];
+    //
+    //     let moves = king_piece.get_valid_moves(current_position, board);
+    //
+    //     assert_eq!(moves.len(), 8);
+    // }
 
     #[test]
     fn king_moves_test() {
-        let king_piece: Piece = Piece { kind: crate::game::PieceKind::King, color: Color::White, move_count: 0 };
-        let current_position: Position = Position { rank: 3, file: 3 };
+        let game = Game::new();
 
-        let board: GameBoard = [
-            [p!("BR"), p!("BN"), p!("BB"), p!("BQ"), p!("BK"), p!("BB"), p!("BN"), p!("BR")],
-            [p!("BP"), p!("BP"), p!("BP"), p!("BP"), p!("BP"), p!("BP"), p!("BP"), p!("BP")],
-            [None; 8],
-            [None; 8],
-            [None; 8],
-            [None; 8],
-            [p!("WP"), p!("WP"), p!("WP"), p!("WP"), p!("WP"), p!("WP"), p!("WP"), p!("WP")],
-            [p!("WR"), p!("WN"), p!("WB"), p!("WQ"), p!("WK"), p!("WB"), p!("WN"), p!("WR")],
-        ];
+        let position = Position { rank: 0, file: 4 };
+        let king = game.get_piece_by_position(position).unwrap();
 
-        let moves = king_piece.get_valid_moves(current_position, board);
-
-        assert_eq!(moves.len(), 8);
+        let moves = king.get_valid_moves(position, &game.board.lock().unwrap());
+        assert_eq!(moves.len(), 0);
     }
 
     #[test]
     fn pawn_moves_test() {
-        let king_piece: Piece = Piece { kind: crate::game::PieceKind::Pawn, color: Color::White, move_count: 0 };
-        let current_position: Position = Position { rank: 3, file: 3 };
+        let mut game = Game::new();
 
-        let board: GameBoard = [
-            [p!("BR"), p!("BN"), p!("BB"), p!("BQ"), p!("BK"), p!("BB"), p!("BN"), p!("BR")],
-            [p!("BP"), p!("BP"), p!("BP"), p!("BP"), p!("BP"), p!("BP"), p!("BP"), p!("BP")],
-            [None; 8],
-            [None; 8],
-            [None; 8],
-            [None; 8],
-            [p!("WP"), p!("WP"), p!("WP"), p!("WP"), p!("WP"), p!("WP"), p!("WP"), p!("WP")],
-            [p!("WR"), p!("WN"), p!("WB"), p!("WQ"), p!("WK"), p!("WB"), p!("WN"), p!("WR")],
-        ];
-
-        let moves = king_piece.get_valid_moves(current_position, board);
-
+        let position = Position { rank: 6, file: 3 };
+        let pawn = game.get_piece_by_position(position).unwrap();
+        let moves = pawn.get_valid_moves(position, &game.board.lock().unwrap());
         assert_eq!(moves.len(), 2);
+
+        let new_position = Position { rank: 6, file: 4 };
+        game.move_piece_at_position(position, new_position).expect("pawn move failed");
+        let pawn = game.get_piece_by_position(new_position).unwrap();
+        let moves = pawn.get_valid_moves(position, &game.board.lock().unwrap());
+        assert_eq!(moves.len(), 1);
     }
 }

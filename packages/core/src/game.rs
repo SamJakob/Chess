@@ -5,6 +5,7 @@ use chrono::{DateTime, Utc};
 use serde::ser::SerializeSeq;
 use serde::{Serialize, Serializer};
 use std::fmt::{Display, Formatter, Write};
+use std::sync::{Arc, Mutex};
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum PieceKind {
@@ -146,12 +147,12 @@ macro_rules! p {
 
 pub type GameBoard = [[Option<Piece>; 8]; 8];
 
-fn serialize_game_board<S>(board: &GameBoard, serializer: S) -> Result<S::Ok, S::Error>
+fn serialize_game_board<S>(board: &Arc<Mutex<GameBoard>>, serializer: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
 {
     let mut ranks = serializer.serialize_seq(Some(8))?;
-    for rank in board {
+    for rank in board.lock().unwrap().iter() {
         ranks.serialize_element(&rank)?;
     }
     ranks.end()
@@ -165,7 +166,7 @@ pub struct Game {
 
     /// 8x8 grid of pieces. Rank (1-8) then file (A-H).
     #[serde(serialize_with = "serialize_game_board")]
-    board: GameBoard,
+    pub board: Arc<Mutex<GameBoard>>,
 
     /// The [Instant] the game was created.
     #[serde(with = "ts_milliseconds")]
@@ -184,7 +185,7 @@ impl Game {
     }
 
     pub fn new_with_id(id: Option<String>) -> Game {
-        let board: GameBoard = [
+        let board = Arc::new(Mutex::new([
             [p!("BR"), p!("BN"), p!("BB"), p!("BQ"), p!("BK"), p!("BB"), p!("BN"), p!("BR")],
             [p!("BP"), p!("BP"), p!("BP"), p!("BP"), p!("BP"), p!("BP"), p!("BP"), p!("BP")],
             [None; 8],
@@ -193,7 +194,7 @@ impl Game {
             [None; 8],
             [p!("WP"), p!("WP"), p!("WP"), p!("WP"), p!("WP"), p!("WP"), p!("WP"), p!("WP")],
             [p!("WR"), p!("WN"), p!("WB"), p!("WQ"), p!("WK"), p!("WB"), p!("WN"), p!("WR")],
-        ];
+        ]));
 
         Game {
             id,
@@ -211,7 +212,7 @@ impl Game {
     }
 
     pub fn get_piece_by_position(&self, position: Position) -> Option<Piece> {
-        self.board[position.rank][position.file]
+        self.board.lock().unwrap()[position.rank][position.file]
     }
 
     pub fn move_piece_at_position(&mut self, position: Position, new_position: Position) -> Result<(), PieceNotFoundError> {
@@ -220,8 +221,10 @@ impl Game {
             return Err(PieceNotFoundError);
         }
 
-        self.board[position.rank][position.file] = None;
-        self.board[new_position.rank][new_position.file] = piece;
+        let mut piece = piece.unwrap();
+        piece.move_count += 1;
+        self.board.lock().unwrap()[position.rank][position.file] = None;
+        self.board.lock().unwrap()[new_position.rank][new_position.file] = Some(piece);
         Ok(())
     }
 }
@@ -237,7 +240,7 @@ mod tests {
         // Count that we have two queens at the end.
         let mut queen_count = 0;
 
-        for (rank, files) in game.board.iter().enumerate() {
+        for (rank, files) in game.board.lock().unwrap().iter().enumerate() {
             for (file, piece) in files.iter().enumerate() {
                 let has_piece = piece.is_some();
 
@@ -258,7 +261,7 @@ mod tests {
                     });
 
                     // Check that the queen is on her own color.
-                    if (piece.kind == PieceKind::Queen) {
+                    if piece.kind == PieceKind::Queen {
                         queen_count += 1;
                         assert_eq!(piece.color, Game::get_tile_color(rank, file));
                     }
