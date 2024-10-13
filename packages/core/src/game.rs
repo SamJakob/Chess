@@ -7,7 +7,7 @@ use chrono::{DateTime, Utc};
 use serde::ser::SerializeSeq;
 use serde::{Serialize, Serializer};
 use std::collections::BTreeMap;
-use std::fmt::{Display, Formatter, Write};
+use std::fmt::{self, Display, Formatter, Write};
 use std::sync::{Arc, Mutex};
 
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -177,6 +177,43 @@ pub struct Game {
     moves: Arc<Mutex<Vec<(Position, Position)>>>,
 }
 
+impl fmt::Display for Game {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let board = self.board.lock().unwrap(); // Access the game board
+        let files = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']; // File labels
+
+        // Initial newline for spacing
+        writeln!(f, "\n")?;
+
+        // Print column labels (file labels)
+        write!(f, "    ")?; // Padding before the file labels
+        for file in files.iter() {
+            write!(f, "{}    ", file)?; // Spacing between each file label
+        }
+        writeln!(f)?; // Newline after the file labels
+
+        // Print each row of the board
+        for (i, row) in board.iter().enumerate() {
+            write!(f, " {}  ", 8 - i)?; // Print the rank (row number)
+            for square in row.iter() {
+                match square {
+                    Some(piece) => write!(f, "{}   ", piece)?, // Spacing for piece
+                    None => write!(f, "..   ")?,
+                }
+            }
+            writeln!(f, " {}", 8 - i)?; // Print the rank again at the end of the row
+        }
+
+        // Print the file labels again at the bottom
+        write!(f, "    ")?; // Padding before the file labels
+        for file in files.iter() {
+            write!(f, "{}    ", file)?; // Spacing between each file label
+        }
+        writeln!(f)?; // Newline at the end
+
+        Ok(())
+    }
+}
 impl Serialize for Game {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where

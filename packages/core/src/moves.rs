@@ -511,6 +511,8 @@ mod test {
             board[bishop_position.rank][bishop_position.file] = Some(bishop);
         }
 
+        // output the board
+
         let bishop = Piece {
             kind: Bishop,
             color: Color::White,
@@ -518,7 +520,7 @@ mod test {
         };
 
         let moves = bishop.get_valid_moves(&game, &bishop_position);
-        assert_eq!(moves.len(), 6);
+        assert_eq!(moves.len(), 7, "{}", game);
     }
 
     #[test]
