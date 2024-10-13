@@ -278,6 +278,12 @@ impl Game {
             return Err(MoveError::IllegalMoveError);
         }
 
+        // If the player is in check, we should eliminate any moves that will result in the player
+        // still being in check afterward.
+        if self.is_player_in_check(piece.color) {
+            for valid_move in valid_moves {}
+        }
+
         piece.move_count += 1;
 
         let mut board = self.board.lock().unwrap();
@@ -340,8 +346,8 @@ impl Game {
 #[cfg(test)]
 mod test {
     use crate::game::Color::{Black, White};
-    use crate::game::{Game, PieceKind};
     use crate::game::PieceKind::{King, Pawn, Queen};
+    use crate::game::{Game, PieceKind};
     use crate::moves::Position;
     use std::str::FromStr;
 

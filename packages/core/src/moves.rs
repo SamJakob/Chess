@@ -175,7 +175,6 @@ impl Piece {
         }
     }
 
-
     fn check_position_for_pawn_take(
         moves: &mut HashSet<Position>,
         board: &GameBoard,
@@ -268,14 +267,31 @@ impl Piece {
         );
 
         // remove a move to take the opponent opposite
-        let ahead = Position { rank: (current_position.rank as isize + direction) as usize, file: current_position.file };
+        let ahead = Position {
+            rank: (current_position.rank as isize + direction) as usize,
+            file: current_position.file,
+        };
         if moves.contains(&ahead) && Game::get_piece(board, &ahead).is_some() {
             moves.remove(&ahead);
         }
 
         // taking
-        Self::check_position_for_pawn_take(&mut moves, board, self.color, current_position, direction, 1);
-        Self::check_position_for_pawn_take(&mut moves, board, self.color, current_position, direction, -1);
+        Self::check_position_for_pawn_take(
+            &mut moves,
+            board,
+            self.color,
+            current_position,
+            direction,
+            1,
+        );
+        Self::check_position_for_pawn_take(
+            &mut moves,
+            board,
+            self.color,
+            current_position,
+            direction,
+            -1,
+        );
 
         // Optional double move for first move
         if self.move_count == 0 {
@@ -396,7 +412,7 @@ impl Piece {
         let mut valid_moves: HashSet<Position> = HashSet::new();
 
         // Explore to top left
-        for dev in 1..min(current_position.file, current_position.rank) {
+        for dev in 1..min(current_position.file, current_position.rank) + 1 {
             let (break_out, valid_move) = Piece::explore_pos_and_break(
                 &Position {
                     rank: current_position.rank - dev,
@@ -405,8 +421,8 @@ impl Piece {
                 self.color,
                 board,
             );
-            if valid_move.is_some() {
-                valid_moves.insert(valid_move.unwrap());
+            if let Some(valid_move) = valid_move {
+                valid_moves.insert(valid_move);
             }
             if break_out {
                 break;
@@ -414,7 +430,7 @@ impl Piece {
         }
 
         // Explore to bottom left
-        for dev in 1..min(current_position.file, 8 - current_position.rank) {
+        for dev in 0..min(current_position.file, 8 - current_position.rank) {
             let (break_out, valid_move) = Piece::explore_pos_and_break(
                 &Position {
                     rank: current_position.rank + dev,
@@ -423,8 +439,8 @@ impl Piece {
                 self.color,
                 board,
             );
-            if valid_move.is_some() {
-                valid_moves.insert(valid_move.unwrap());
+            if let Some(valid_move) = valid_move {
+                valid_moves.insert(valid_move);
             }
             if break_out {
                 break;
